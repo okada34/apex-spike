@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>マイページ｜Apexサークル戦績</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#241C52">
+<link rel="icon" type="image/png" sizes="64x64" href="../icons/favicon-64.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="サークル戦績">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=RocknRoll+One&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#241C52; --card:#332A70; --sunken:#2E2559; --line:#493D96; --dim:#3B3178;
+    --purple:#7C5CFF; --yellow:#FFE646; --lime:#C8FF00; --red:#FF5470;
+    --ink:#FFFFFF; --ink2:#C6BCF2; --ink3:#A99CE0; --ink4:#8478C4; --invert:#241C52;
+    --limeDark:#9CC700;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; padding:0; background:var(--ground); color:var(--ink);
+    font-family:'RocknRoll One','Hiragino Sans','Yu Gothic',sans-serif;
+    font-size:14px; line-height:1.7; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  }
+  .dela{ font-family:'Dela Gothic One','Hiragino Sans',sans-serif; font-weight:400; }
+  .mono{ font-family:'Roboto Mono',ui-monospace,monospace; font-weight:700; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+
+  .wrap{ max-width:430px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;
+         padding-bottom:calc(70px + env(safe-area-inset-bottom)); }
+  main{ flex:1; padding-bottom:14px; }
+
+  header{
+    position:sticky; top:0; z-index:20; background:var(--ground);
+    padding:16px 18px 12px; display:flex; align-items:center; gap:11px;
+  }
+  header .ttl{ font-family:'Dela Gothic One',sans-serif; font-size:17px; }
+  .iconbtn{ background:none; border:0; padding:6px; display:flex; align-items:center; cursor:pointer; }
+
+  /* ---- 名前と切替 ---- */
+  .who{ display:flex; align-items:center; gap:10px; margin:0 18px; }
+  .who .nm{ font-family:'Dela Gothic One',sans-serif; font-size:24px; }
+  .who .sw{ margin-left:auto; position:relative; display:flex; align-items:center; background:var(--card); border-radius:20px; overflow:hidden; }
+  .who select{
+    appearance:none; -webkit-appearance:none; background:transparent; border:0; outline:none;
+    color:var(--ink2); font-family:'RocknRoll One',sans-serif; font-size:11.5px; padding:8px 28px 8px 13px; cursor:pointer;
+  }
+  .who select option{ background:var(--card); color:var(--ink); }
+  .who .cv{ position:absolute; right:10px; pointer-events:none; display:flex; }
+  .meta{ display:flex; align-items:baseline; gap:10px; margin:5px 18px 0; }
+  .meta .a{ font-size:10.5px; color:var(--ink4); }
+  .meta .b{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:10px; color:var(--ink4); letter-spacing:-.04em; margin-left:auto; }
+
+  .tiles{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:14px 18px 0; }
+  .tile{ background:var(--card); border-radius:18px; padding:14px 15px; }
+  .tile .l{ font-size:10.5px; color:var(--ink3); }
+  .tile .v{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:28px; letter-spacing:-.04em; line-height:1.2; }
+  .tile .v small{ font-family:'RocknRoll One',sans-serif; font-size:11px; font-weight:400; letter-spacing:0; color:var(--ink3); margin-left:3px; }
+  .tile .s{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:10px; color:var(--ink4); letter-spacing:-.04em; }
+
+  /* ---- 黄の看板（新しく取った称号） ---- */
+  .board{ margin:22px 18px 0; background:var(--yellow); border-radius:18px; padding:18px 18px 8px; transform:rotate(-1.4deg); }
+  .board .bh{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+  .board .bt{ font-family:'Dela Gothic One',sans-serif; font-size:22px; color:var(--invert); }
+  .board .bs{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:10px; color:rgba(36,28,82,.6); letter-spacing:-.04em; }
+  .krow{ padding:14px 0; border-bottom:2px solid rgba(36,28,82,.14); }
+  .kline{ display:flex; align-items:center; gap:10px; }
+  .ktag{ font-size:10px; background:var(--invert); color:var(--yellow); padding:3px 8px; border-radius:20px; flex:none; }
+  .kname{ font-family:'Dela Gothic One',sans-serif; font-size:20px; color:var(--invert); }
+  .kval{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:24px; color:var(--invert); letter-spacing:-.04em; margin-left:auto; }
+  .kdesc{ font-size:11px; color:rgba(36,28,82,.72); margin-top:6px; line-height:1.6; }
+  .bfoot{ display:flex; justify-content:flex-end; padding:8px 0 2px; }
+  .bfoot span{ font-size:9.5px; color:rgba(36,28,82,.55); }
+
+  /* ---- 称号バッジ ---- */
+  .badge2{
+    font-family:'Dela Gothic One','Hiragino Sans',sans-serif; font-size:12px; color:var(--invert);
+    background:var(--lime); border:2px solid var(--limeDark); border-radius:9px;
+    padding:8px 12px 7px; white-space:nowrap; display:inline-block; cursor:pointer;
+  }
+  .badges{ display:flex; flex-wrap:wrap; gap:8px; margin:0 18px; }
+
+  /* ---- レジェンド ---- */
+  .lg{ background:var(--card); border-radius:18px; padding:14px 15px; margin:0 18px 9px; border-left:4px solid var(--line); }
+  .lg .lh{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+  .lg .ln{ font-family:'Dela Gothic One',sans-serif; font-size:16px; }
+  .lg .lc{ font-size:10px; }
+  .lg .lgm{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:11px; color:var(--ink3); letter-spacing:-.04em; }
+  .stats3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:11px; }
+  .stat{ background:var(--sunken); border-radius:12px; padding:9px 6px; text-align:center; }
+  .slbl{ font-size:9.5px; color:var(--ink3); }
+  .sval{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:18px; letter-spacing:-.04em; margin-top:2px; }
+  .sval span{ font-family:'RocknRoll One',sans-serif; font-size:10px; color:var(--ink3); letter-spacing:0; font-weight:400; }
+
+  /* ---- データランクのバー ---- */
+  .drbar{ display:flex; gap:5px; height:14px; margin-top:12px; }
+  .drbar .z{ flex:1; background:var(--sunken); border-radius:6px; overflow:hidden; }
+  .drbar .z i{ display:block; height:100%; border-radius:6px; }
+  .drlabels{ display:flex; gap:5px; margin-top:2px; }
+  .drlabels button{
+    flex:1; height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    background:none; border:0; cursor:pointer; padding:0;
+  }
+  .drlabels .n{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:12px; letter-spacing:-.04em; }
+  .drlabels .s{ font-family:'RocknRoll One',sans-serif; font-size:8.5px; color:var(--ink2); }
+  .why{ background:var(--sunken); border-radius:12px; padding:12px 13px; margin-top:10px; }
+  .why .wt{ font-family:'Dela Gothic One',sans-serif; font-size:12.5px; }
+  .why .wb{ font-size:11px; line-height:1.75; color:var(--ink2); margin-top:6px; }
+
+  /* ---- 共通 ---- */
+  .card{ background:var(--card); border-radius:18px; padding:15px; margin:0 18px 10px; }
+  .sec{ font-family:'Dela Gothic One',sans-serif; font-size:15px; margin:24px 18px 11px; }
+  .sechead{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:24px 18px 11px; }
+  .sechead .t{ font-family:'Dela Gothic One',sans-serif; font-size:15px; }
+  .sechead .n{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:11px; color:var(--ink2); letter-spacing:-.04em; }
+  .sub{ font-size:11px; line-height:1.7; color:var(--ink3); }
+  .btn{
+    display:block; width:calc(100% - 36px); margin:12px 18px 0; height:48px;
+    border-radius:14px; border:2px solid var(--line); background:none; color:var(--ink2);
+    font-family:'RocknRoll One',sans-serif; font-size:13px; cursor:pointer;
+  }
+  .btn.hl{ border-color:var(--purple); color:var(--ink); }
+  .best{ display:flex; align-items:center; gap:12px; background:var(--card); border-radius:18px; padding:14px 15px; margin:0 18px 9px; }
+  .best .bl{ font-size:11px; color:var(--ink3); }
+  .best .bv{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:26px; letter-spacing:-.04em; margin-left:auto; }
+  .best .bv small{ font-family:'RocknRoll One',sans-serif; font-size:11px; color:var(--ink3); font-weight:400; letter-spacing:0; margin-left:3px; }
+  .best .bw{ font-size:10px; color:var(--ink4); margin-top:2px; }
+
+  .trow{ background:var(--card); border-radius:16px; padding:13px 15px; margin:0 18px 8px; }
+  .trow .th{ display:flex; align-items:center; gap:10px; }
+  .trow .tn{ font-family:'Dela Gothic One',sans-serif; font-size:15px; }
+  .trow .tv{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:16px; letter-spacing:-.04em; margin-left:auto; }
+  .trow .td{ font-size:10.5px; color:var(--ink3); margin-top:6px; line-height:1.6; }
+  .trow.off{ opacity:.72; }
+  .trow .who2{ font-size:10.5px; color:var(--ink3); margin-left:auto; }
+  .trow .who2 b{ color:var(--ink2); font-weight:400; }
+
+  nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:16; height:70px; background:var(--card);
+    box-shadow:0 -6px 18px rgba(0,0,0,.38); display:flex; justify-content:center;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav .tabs{ width:100%; max-width:430px; display:flex; align-items:center; }
+  nav .tab{ flex:1; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; background:none; border:0; cursor:pointer; padding:0; }
+  nav .tab .lb{ font-family:'RocknRoll One',sans-serif; font-size:9.5px; color:var(--ink3); }
+  nav .tab.on .inner{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:var(--lime); border-radius:8px; padding:7px 11px 6px; transform:rotate(-1.4deg);
+  }
+  nav .tab.on .lb{ color:var(--invert); }
+  .badge{
+    position:absolute; top:-5px; right:-8px; min-width:17px; height:17px; border-radius:20px;
+    background:var(--red); display:flex; align-items:center; justify-content:center; padding:0 4px;
+    font-family:'Roboto Mono',monospace; font-weight:700; font-size:9.5px; color:#fff; letter-spacing:0;
+  }
+  .toast{
+    position:fixed; left:50%; bottom:88px; transform:translateX(-50%); z-index:40;
+    background:var(--card); border:1.5px solid var(--line); border-radius:14px;
+    padding:12px 16px; font-size:12.5px; max-width:340px; text-align:center;
+    box-shadow:0 8px 26px rgba(0,0,0,.45);
+  }
+
+  /* 地色（#241C52）や面（#332A70）と紛れないよう、ベタ塗りにする */
+  .toast{
+    background:var(--lime); border:0; color:var(--invert);
+    font-family:'Dela Gothic One','Hiragino Sans',sans-serif; line-height:1.6;
+    box-shadow:0 10px 30px rgba(0,0,0,.55);
+  }
+  .toast.err{ background:var(--red); color:#FFFFFF; border:0; }
+  .toast .btn, .toast button{
+    background:rgba(36,28,82,.14); border:0; color:var(--invert);
+    font-family:'RocknRoll One',sans-serif;
+  }
+  .toast.err .btn, .toast.err button{ background:rgba(255,255,255,.2); color:#FFFFFF; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <button class="iconbtn" id="back" hidden>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6BCF2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+    </button>
+    <div class="ttl dela" id="title">マイページ</div>
+  </header>
+  <main id="app"></main>
+  <nav><div class="tabs" id="tabbar"></div></nav>
+</div>
+
+<script>
+// ===================================================================
+// マイページ。称号はスプリット単位、データランクだけ全期間で積む。
+// ===================================================================
+const LS = { url:'apexGasUrl', key:'apexEditKey', person:'apexPersonId' };
+const MEM = {};
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return MEM[k] || null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){ MEM[k] = v; } }
+};
+
+
+/**
+ * 画面をまたいで結果を覚えておく置き場。
+ * タブを切り替えるたびにGASを待つと毎回2〜3秒かかるので、前回の内容で先に描く。
+ * 中身は数秒後に裏で最新へ差し替わる。
+ */
+const CACHE_PREFIX = 'apexCache:';
+function cacheGet(key){
+  try{
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    return (o && o.data) ? o.data : null;
+  }catch(e){ return null; }
+}
+function cacheSet(key, data){
+  try{ localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), data: data })); }
+  catch(e){ /* 容量超過などは無視。次回また取りに行くだけ */ }
+}
+
+/**
+ * 他の画面ぶんを裏で取っておく。
+ * タブを初めて開くときの2〜3秒を無くすため。いま見ている画面が出てから走らせる。
+ * 取れなかったら黙って諦める（次に開いたときに取りに行くだけ）。
+ */
+function warmOtherScreens(myPersonId){
+  const jobs = [
+    ['home',                       { action:'home' }],
+    ['ranking:month::person',      { action:'ranking', period_kind:'month', period_value:'', axis:'person' }],
+    ['circle:',                    { action:'circle' }],
+    ['mypage:' + (myPersonId||''), myPersonId ? { action:'mypage', person_id:myPersonId } : { action:'mypage' }],
+    ['settings',                   { action:'settings' }],
+    ['masters',                    { action:'masters' }],
+    ['review_list',                { action:'review_list' }]
+  ];
+  let i = 0;
+  const next = () => {
+    if(i >= jobs.length) return;
+    const [key, params] = jobs[i++];
+    // すでに新しい控えがあるなら飛ばす（5分もてば十分）
+    let fresh = false;
+    try{
+      const raw = localStorage.getItem(CACHE_PREFIX + key);
+      if(raw){ const o = JSON.parse(raw); fresh = o && (Date.now() - o.t) < 5 * 60 * 1000; }
+    }catch(e){}
+    if(fresh){ next(); return; }
+    apiGet(params)
+      .then(j => { cacheSet(key, j); })
+      .catch(() => {})
+      .then(() => setTimeout(next, 300));   // 1本ずつ。まとめて叩かない
+  };
+  setTimeout(next, 1200);   // いま見ている画面の描画を邪魔しない
+}
+
+const S = {
+  url: store.get(LS.url) || '',
+  myPersonId: store.get(LS.person) || '',
+  personId: '',
+  data: null,
+  view: 'main',     // main | titles | legends | datarank
+  openTier: null,   // データランクで開いている段 {legend_id, index}
+  openTitle: null,
+  pending: 0
+};
+
+const app = document.getElementById('app');
+const titleEl = document.getElementById('title');
+const backEl = document.getElementById('back');
+
+/** レジェンドのクラス色。依頼者提供の公式色 */
+const CLASS_COLOR = { assault:'#E2504E', skirmisher:'#D4C247', recon:'#A855F7', support:'#4A8FE0', controller:'#5BBE5B' };
+const CLASS_JA = { assault:'アサルト', skirmisher:'スカーミッシャー', recon:'リコン', support:'サポート', controller:'コントローラー' };
+/** データランクの段の色。サークルのバーと同じ考え方で上がっていく */
+const TIER_COLORS = ['var(--purple)', 'var(--red)', 'var(--yellow)', 'var(--lime)'];
+
+function apiGet(params){
+  const q = new URLSearchParams(params).toString();
+  return fetch(S.url + '?' + q, { method:'GET' })
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(j => { if(!j.ok) throw new Error(j.error || '取得に失敗しました'); return j; });
+}
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function toast(msg){
+  const old = document.getElementById('toast'); if(old) old.remove();
+  const t = document.createElement('div'); t.id='toast'; t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+}
+function n0(v){ return (v === null || v === undefined) ? '—' : Math.round(Number(v)).toLocaleString('ja-JP'); }
+function n1(v){ return (v === null || v === undefined) ? '—' : Number(v).toFixed(1); }
+
+// ===================================================================
+// 下タブ
+// ===================================================================
+const TABS = [
+  ['ホーム','<path d="M4 11.4 12 5l8 6.4"></path><path d="M6.4 10.6V19h11.2v-8.4"></path>','../home/'],
+  ['ランキング','<path d="M5 20V11"></path><path d="M12 20V4"></path><path d="M19 20v-6"></path>','../ranking/'],
+  ['サークル','<circle cx="5.5" cy="9.6" r="2.4"></circle><circle cx="18.5" cy="9.6" r="2.4"></circle><circle cx="12" cy="8.6" r="3"></circle><path d="M7 19a5 5 0 0 1 10 0"></path><path d="M1.4 17a4.6 4.6 0 0 1 4.4-4.2"></path><path d="M22.6 17a4.6 4.6 0 0 0-4.4-4.2"></path>','../circle/'],
+  ['マイページ','<circle cx="12" cy="8" r="3.6"></circle><path d="M5 20a7 7 0 0 1 14 0"></path>',''],
+  ['登録','<path d="M12 4v11"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M5 19h14"></path>','../record/']
+];
+function renderTabs(){
+  document.getElementById('tabbar').innerHTML = TABS.map(([name, icon, href]) => {
+    const on = name === 'マイページ';
+    const badge = (name === '登録' && S.pending) ? '<div class="badge">' + S.pending + '</div>' : '';
+    const svg = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' +
+      (on ? '#241C52' : '#A99CE0') + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + icon + '</svg>';
+    if(on) return '<button class="tab on"><div class="inner"><div style="position:relative">' + svg + '</div><span class="lb">' + name + '</span></div></button>';
+    return '<button class="tab" data-href="' + href + '"><div style="position:relative">' + svg + badge + '</div><span class="lb">' + name + '</span></button>';
+  }).join('');
+  document.querySelectorAll('#tabbar .tab[data-href]').forEach(b => {
+    b.onclick = () => { location.href = b.dataset.href; };
+  });
+}
+
+// ===================================================================
+// 部品
+// ===================================================================
+function whoBar(){
+  const d = S.data;
+  const opts = (d.persons || []).map(p =>
+    '<option value="' + esc(p.person_id) + '"' + (p.person_id === d.person.person_id ? ' selected' : '') + '>' +
+    esc(p.name) + (p.person_id === S.myPersonId ? '（あなた）' : '') + '</option>').join('');
+  return '<div class="who"><div class="nm">' + esc(d.person.name) + '</div>' +
+    '<div class="sw"><select id="selPerson">' + opts + '</select>' +
+    '<span class="cv"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#A99CE0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></div></div>' +
+    '<div class="meta"><span class="a">本アカ＋サブアカ を合算</span>' +
+    '<span class="b">' + esc(d.split_label) + '</span></div>';
+}
+
+function legendCard(l, withRank){
+  const color = CLASS_COLOR[l.cls] || 'var(--ink3)';
+  const clsJa = CLASS_JA[l.cls] || '';
+  let body =
+    '<div class="lh"><div style="display:flex;align-items:baseline;gap:8px">' +
+      '<span class="ln">' + esc(l.name) + '</span>' +
+      '<span class="lc" style="color:' + color + '">' + esc(clsJa) + '</span></div>' +
+      '<span class="lgm">' + l.games + '戦</span></div>';
+
+  if(!withRank){
+    if(!l.measurable){
+      body += '<div class="sub" style="margin-top:10px">計測前。' + S.data.tiers[0].n + '戦たまるまで平均値は出しません。</div>';
+      return '<div class="lg" style="border-left-color:' + color + '">' + body + '</div>';
+    }
+    body += '<div class="stats3">' +
+      '<div class="stat"><div class="slbl">平均ダメージ</div><div class="sval">' + n0(l.avg_damage) + '</div></div>' +
+      '<div class="stat"><div class="slbl">平均キル</div><div class="sval">' + n1(l.avg_kills) + '</div></div>' +
+      '<div class="stat"><div class="slbl">1位</div><div class="sval">' + l.wins + '<span>回</span></div></div>' +
+    '</div>';
+    return '<div class="lg" style="border-left-color:' + color + '">' + body + '</div>';
+  }
+
+  // データランク表示
+  if(!l.measurable){
+    body += '<div class="sub" style="margin-top:10px">計測前。' + S.data.tiers[0].n + '戦たまるまで平均値は出しません。</div>';
+    return '<div class="lg" style="border-left-color:' + color + '">' + body + '</div>';
+  }
+
+  body += '<div style="display:flex;align-items:baseline;gap:9px;margin-top:10px">' +
+      '<span class="mono" style="font-size:24px">' + n0(l.avg_damage) + '</span>' +
+      '<span class="mono" style="font-size:12px;color:var(--ink3)">±' + (l.ci === null ? '—' : l.ci) + '</span>' +
+      '<span style="font-size:10.5px;color:var(--ink3);margin-left:auto">平均ダメージ</span></div>';
+
+  const tiers = S.data.tiers;
+  const zones = tiers.map((t, i) => {
+    if(i < l.tier_index) return '<div class="z"><i style="width:100%;background:' + TIER_COLORS[i] + '"></i></div>';
+    if(i > l.tier_index + 1) return '<div class="z"></div>';
+    if(i === l.tier_index) return '<div class="z"><i style="width:100%;background:' + TIER_COLORS[i] + '"></i></div>';
+    // 次の段への進み具合
+    const from = tiers[i - 1] ? tiers[i - 1].n : 0;
+    const span = t.n - from;
+    const raw = span > 0 ? ((l.games - from) / span) * 100 : 0;
+    const pct = raw <= 0 ? 0 : Math.max(2, Math.min(100, Math.round(raw)));
+    return '<div class="z"><i style="width:' + pct + '%;background:' + TIER_COLORS[i] + '"></i></div>';
+  }).join('');
+
+  const labels = tiers.map((t, i) =>
+    '<button data-tier="' + esc(l.legend_id) + ':' + i + '">' +
+      '<span class="n" style="color:' + (i <= l.tier_index ? TIER_COLORS[i] : 'var(--ink4)') + '">' + t.n + '</span>' +
+      '<span class="s">' + esc(t.short) + '</span></button>').join('');
+
+  body += '<div class="drbar">' + zones + '</div><div class="drlabels">' + labels + '</div>';
+
+  const op = S.openTier;
+  if(op && op.legend_id === l.legend_id){
+    const t = tiers[op.index];
+    body += '<div class="why"><div class="wt">' + esc(t.formal) + '（' + t.n + '戦）</div>' +
+      '<div class="wb">' + esc(t.why) + '</div></div>';
+  }
+  return '<div class="lg" style="border-left-color:' + color + '">' + body + '</div>';
+}
+
+// ===================================================================
+// 画面
+// ===================================================================
+function renderMain(){
+  const d = S.data;
+  titleEl.textContent = 'マイページ'; backEl.hidden = true;
+
+  const tiles = '<div class="tiles">' +
+    '<div class="tile"><div class="l">通算戦数</div><div class="v">' + d.totals.games + '<small>戦</small></div></div>' +
+    '<div class="tile"><div class="l">平均ダメージ</div><div class="v">' + n0(d.totals.avg_damage) + '</div>' +
+    '<div class="s">' + d.totals.games + '戦</div></div></div>';
+
+  if(d.totals.games === 0){
+    return whoBar() + tiles +
+      '<div class="card" style="margin-top:16px"><div class="dela" style="font-size:15px">まだ記録がありません</div>' +
+      '<div class="sub" style="margin-top:9px">' + esc(d.split_label) + ' に確定した試合がまだありません。<br>' +
+      '登録タブでスクショを確認して確定すると、ここに出ます。</div></div>';
+  }
+
+  // 新しく取った称号。上位2つを看板に出す
+  const held = (d.titles || []).filter(t => t.held);
+  const board = held.length
+    ? '<div class="board"><div class="bh"><div class="bt">持っている称号</div>' +
+      '<div class="bs">' + esc(d.split_label) + '</div></div>' +
+      held.slice(0, 2).map(t =>
+        '<div class="krow"><div class="kline"><div class="ktag">称号</div>' +
+        '<div class="kname">' + esc(t.name) + '</div>' +
+        '<div class="kval">' + n0(t.value) + esc(t.unit) + '</div></div>' +
+        '<div class="kdesc">' + esc(t.desc) + '</div></div>').join('') +
+      '<div class="bfoot"><span>' + esc(d.split_label) + ' の集計</span></div></div>'
+    : '';
+
+  const badges = held.length
+    ? '<div class="sechead"><div class="t">持っている称号</div>' +
+      '<div class="n">' + d.title_held + ' / ' + d.title_total + '</div></div>' +
+      '<div class="sub" style="margin:0 18px 10px">タップすると、その称号の説明が開きます</div>' +
+      '<div class="badges">' + held.map((t, i) =>
+        '<span class="badge2" data-title="' + esc(t.id) + '" style="transform:rotate(' + (i % 2 ? 1.4 : -1.4) + 'deg)">' +
+        esc(t.name) + '</span>').join('') + '</div>' +
+      (S.openTitle ? (() => {
+        const t = held.find(x => x.id === S.openTitle);
+        return t ? '<div class="card" style="margin-top:12px"><div class="dela" style="font-size:13px">' + esc(t.name) +
+          '</div><div class="sub" style="margin-top:6px">' + esc(t.desc) + '　<span class="mono" style="color:var(--ink2)">' +
+          n0(t.value) + esc(t.unit) + '</span></div></div>' : '';
+      })() : '')
+    : '<div class="sechead"><div class="t">持っている称号</div><div class="n">0 / ' + d.title_total + '</div></div>' +
+      '<div class="card"><div class="sub">まだ1つも取れていません。称号はすべて' + esc(d.split_label) + 'の集計です。</div></div>';
+
+  const top3 = (d.legends || []).slice(0, 3);
+  const legends = top3.length
+    ? '<div class="sechead"><div class="t">よく使うレジェンド</div><div class="n">よく出している3体</div></div>' +
+      top3.map(l => legendCard(l, false)).join('') +
+      '<button class="btn" id="allLegends">使用済み全キャラを見る</button>'
+    : '';
+
+  const b = d.best;
+  const best = (b.damage || b.kills)
+    ? '<div class="sec">自己ベスト</div>' +
+      (b.damage ? '<div class="best"><div><div class="bl">1試合の最高与ダメージ</div>' +
+        '<div class="bw">' + esc(b.damage_at) + (b.damage_legend ? '・' + esc(b.damage_legend) : '') + '</div></div>' +
+        '<div class="bv">' + n0(b.damage) + '</div></div>' : '') +
+      (b.kills ? '<div class="best"><div><div class="bl">1試合の最高キル</div>' +
+        '<div class="bw">' + esc(b.kills_at) + (b.kills_legend ? '・' + esc(b.kills_legend) : '') + '</div></div>' +
+        '<div class="bv">' + b.kills + '<small>キル</small></div></div>' : '')
+    : '';
+
+  // データランクの入口。いちばん出しているレジェンドで言う
+  const t0 = top3[0];
+  const rankEntry = t0
+    ? '<button class="btn hl" id="toRank">この数字、どれくらい信じていい？</button>' +
+      '<div class="sub" style="margin:9px 18px 0">' + esc(t0.name) + 'は <span class="mono" style="color:var(--ink2)">' +
+      t0.games + '戦</span>。' +
+      (t0.to_next === null ? 'いちばん上の段まで届いています。'
+        : '「' + esc(d.tiers[t0.tier_index + 1].short) + '」まで あと' + t0.to_next + '戦 。') + '</div>'
+    : '';
+
+  return whoBar() + tiles + board + badges +
+    '<button class="btn" id="allTitles">称号を' + d.title_total + '個ぜんぶ見る</button>' +
+    legends + best + rankEntry + '<div style="height:24px"></div>';
+}
+
+function renderTitles(){
+  const d = S.data;
+  titleEl.textContent = '称号'; backEl.hidden = false;
+  const held = d.titles.filter(t => t.held);
+  const not = d.titles.filter(t => !t.held);
+
+  const row = (t, mine) =>
+    '<div class="trow' + (mine ? '' : ' off') + '">' +
+      '<div class="th"><div class="tn">' + esc(t.name) + '</div>' +
+      (mine
+        ? '<div class="tv">' + (t.value === null ? '—' : n0(t.value) + esc(t.unit)) + '</div>'
+        : '<div class="who2">いまは <b>' + (t.holder_name ? esc(t.holder_name) : '誰も持っていない') + '</b></div>') +
+      '</div><div class="td">' + esc(t.desc) + '</div></div>';
+
+  return '<div class="card" style="margin-top:4px"><div class="sub">' +
+      'すべてスプリット単位。<span style="color:var(--ink2)">' + esc(d.split_label) + '</span> の集計です。</div></div>' +
+    '<div class="sechead"><div class="t">持っている</div><div class="n">' + held.length + '</div></div>' +
+    (held.length ? held.map(t => row(t, true)).join('') : '<div class="card"><div class="sub">まだありません</div></div>') +
+    '<div class="sechead"><div class="t">まだ持っていない</div><div class="n">' + not.length + '</div></div>' +
+    '<div class="sub" style="margin:0 18px 10px">いま誰が持っているかを右に出します。取り返しにいく先が分かるように。</div>' +
+    not.map(t => row(t, false)).join('') + '<div style="height:24px"></div>';
+}
+
+function renderLegends(){
+  const d = S.data;
+  titleEl.textContent = '使用済みキャラ'; backEl.hidden = false;
+  if(!(d.legends || []).length){
+    return '<div class="card" style="margin-top:4px"><div class="sub">まだ1体も確定していません。</div></div>';
+  }
+  return '<div class="sechead" style="margin-top:4px"><div class="t">' + esc(d.person.name) + 'が使ったキャラ</div>' +
+    '<div class="n">' + d.legends.length + '体</div></div>' +
+    d.legends.map(l => legendCard(l, false)).join('') + '<div style="height:24px"></div>';
+}
+
+function renderDataRank(){
+  const d = S.data;
+  titleEl.textContent = 'データランク'; backEl.hidden = false;
+  return '<div class="card" style="margin-top:4px">' +
+      '<div class="dela" style="font-size:14px">この数字、どれくらい信じていい？</div>' +
+      '<div class="sub" style="margin-top:9px">試合数が少ないうちは、平均値はたまたまで動きます。' +
+      'どこまで積んだら信じていいかを4段で出します。<br>スプリットでは区切らず、全期間で積み上げます。</div></div>' +
+    (d.legends || []).map(l => legendCard(l, true)).join('') +
+    '<div class="card" style="margin-top:12px"><div class="sub">' +
+      '4つの数字はボタンです。タップすると、その段の意味と根拠が開きます。<br>' +
+      'バーは <span style="color:var(--ink2)">4段を等幅</span> で描いています' +
+      '（戦数に比例させると15・30・64が左端に潰れて読めなくなるため）。</div></div>' +
+    '<div style="height:24px"></div>';
+}
+
+// ===================================================================
+// 描画と結線
+// ===================================================================
+function render(){
+  renderTabs();
+  if(S.view === 'titles')        app.innerHTML = renderTitles();
+  else if(S.view === 'legends')  app.innerHTML = renderLegends();
+  else if(S.view === 'datarank') app.innerHTML = renderDataRank();
+  else                           app.innerHTML = renderMain();
+  bind();
+}
+
+function bind(){
+  const sp = document.getElementById('selPerson');
+  if(sp) sp.onchange = () => load(sp.value);
+
+  const at = document.getElementById('allTitles');
+  if(at) at.onclick = () => { S.view = 'titles'; render(); window.scrollTo({ top:0 }); };
+  const al = document.getElementById('allLegends');
+  if(al) al.onclick = () => { S.view = 'legends'; render(); window.scrollTo({ top:0 }); };
+  const tr = document.getElementById('toRank');
+  if(tr) tr.onclick = () => { S.view = 'datarank'; S.openTier = null; render(); window.scrollTo({ top:0 }); };
+
+  app.querySelectorAll('[data-title]').forEach(b => {
+    b.onclick = () => { S.openTitle = (S.openTitle === b.dataset.title) ? null : b.dataset.title; render(); };
+  });
+  app.querySelectorAll('[data-tier]').forEach(b => {
+    b.onclick = () => {
+      const [lid, i] = b.dataset.tier.split(':');
+      const same = S.openTier && S.openTier.legend_id === lid && S.openTier.index === Number(i);
+      S.openTier = same ? null : { legend_id: lid, index: Number(i) };
+      render();
+    };
+  });
+
+  backEl.onclick = () => { S.view = 'main'; S.openTier = null; render(); window.scrollTo({ top:0 }); };
+}
+
+// ===================================================================
+// 通信
+// ===================================================================
+async function load(personId){
+  const ck = 'mypage:' + (personId || '');
+  const cached = cacheGet(ck);
+  if(cached){
+    S.data = cached; S.personId = cached.person.person_id;
+    S.view = 'main'; S.openTier = null; S.openTitle = null;
+    render();
+  }else{
+    app.innerHTML = '<div class="card" style="margin-top:8px">' +
+      '<div class="dela" style="font-size:15px">サーバーに聞いています…</div>' +
+      '<div class="sub" style="margin-top:8px">数秒かかります。そのままお待ちください。</div></div>';
+  }
+  try{
+    const [d, h] = await Promise.all([
+      apiGet(personId ? { action:'mypage', person_id:personId } : { action:'mypage' }),
+      apiGet({ action:'home' }).catch(() => null)
+    ]);
+    S.data = d; S.personId = d.person.person_id;
+    if(h) S.pending = h.pending || 0;
+    cacheSet(ck, d);
+    warmOtherScreens(S.myPersonId);
+    if(!cached || S.view === 'main') render();
+  }catch(e){
+    if(cached) return;
+    app.innerHTML = '<div class="card" style="margin-top:8px">' +
+      '<div class="dela" style="font-size:15px">つながりませんでした</div>' +
+      '<div class="sub" style="margin-top:9px">' + esc(e.message) + '</div></div>' +
+      '<button class="btn" id="again">もう一度ためす</button>';
+    document.getElementById('again').onclick = () => load(personId);
+  }
+}
+
+function boot(){
+  renderTabs();
+  if(!S.url){
+    app.innerHTML = '<div class="card" style="margin-top:8px">' +
+      '<div class="dela" style="font-size:15px">まず接続先を教えてください</div>' +
+      '<div class="sub" style="margin-top:9px">この端末はまだサーバーの場所を知りません。<br>' +
+      '<span style="color:var(--lime)">登録タブ</span>でWebアプリのURLを保存すると、ここに出ます。</div></div>' +
+      '<button class="btn" id="go" style="border-color:var(--lime);color:var(--lime)">登録タブをひらく</button>';
+    document.getElementById('go').onclick = () => { location.href = '../record/'; };
+    return;
+  }
+  load(S.myPersonId);
+}
+
+boot();
+</script>
+
+<script>
+// ホーム画面のアイコンから開けるようにする。電波が悪くても画面自体は出る。
+// 数字の控えは画面側（localStorage）が持っているので、ここでは触らない。
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(function () {
+      // 登録できなくてもアプリは普通に動く。file:// で開いたときなど
+    });
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>設定｜Apexサークル戦績</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#241C52">
+<link rel="icon" type="image/png" sizes="64x64" href="../icons/favicon-64.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="サークル戦績">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=RocknRoll+One&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#241C52; --card:#332A70; --sunken:#2E2559; --line:#493D96; --dim:#3B3178;
+    --purple:#7C5CFF; --yellow:#FFE646; --lime:#C8FF00; --red:#FF5470;
+    --ink:#FFFFFF; --ink2:#C6BCF2; --ink3:#A99CE0; --ink4:#8478C4; --invert:#241C52;
+    --limeDark:#9CC700;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; padding:0; background:var(--ground); color:var(--ink);
+    font-family:'RocknRoll One','Hiragino Sans','Yu Gothic',sans-serif;
+    font-size:14px; line-height:1.7; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  }
+  .dela{ font-family:'Dela Gothic One','Hiragino Sans',sans-serif; font-weight:400; }
+  .mono{ font-family:'Roboto Mono',ui-monospace,monospace; font-weight:700; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+
+  .wrap{ max-width:430px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;
+         padding-bottom:calc(70px + env(safe-area-inset-bottom)); }
+  main{ flex:1; padding-bottom:14px; }
+
+  header{
+    position:sticky; top:0; z-index:20; background:var(--ground);
+    padding:16px 18px 12px; display:flex; align-items:center; gap:11px;
+  }
+  header .ttl{ font-family:'Dela Gothic One',sans-serif; font-size:17px; }
+  .iconbtn{ background:none; border:0; padding:6px; display:flex; align-items:center; cursor:pointer; }
+  .saving{ font-family:'Roboto Mono',monospace; font-size:10.5px; color:var(--ink3); margin-left:auto; }
+
+  .card{ background:var(--card); border-radius:18px; padding:15px; margin:0 18px 10px; }
+  .sec{ font-family:'Dela Gothic One',sans-serif; font-size:15px; margin:24px 18px 11px; }
+  .sechead{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:24px 18px 11px; }
+  .sechead .t{ font-family:'Dela Gothic One',sans-serif; font-size:15px; }
+  .sechead .n{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:11px; color:var(--ink2); letter-spacing:-.04em; }
+  .sub{ font-size:11px; line-height:1.7; color:var(--ink3); }
+  .sub b{ color:var(--ink2); font-weight:400; }
+
+  /* ---- 行 ---- */
+  .row{
+    display:flex; align-items:center; gap:12px; background:var(--card); border-radius:16px;
+    padding:14px 15px; margin:0 18px 8px; width:calc(100% - 36px); border:0; text-align:left; cursor:pointer; color:var(--ink);
+  }
+  .row.flat{ cursor:default; }
+  .rtitle{ font-size:13.5px; }
+  .rdesc{ font-size:10.5px; line-height:1.6; color:var(--ink3); margin-top:4px; }
+  .rval{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:11.5px; color:var(--ink2); letter-spacing:-.04em; margin-left:auto; white-space:nowrap; }
+  .rvalt{ font-size:11.5px; color:var(--ink2); margin-left:auto; white-space:nowrap; }
+  .adm{ font-size:9.5px; color:var(--ink4); border:1px solid var(--line); border-radius:20px; padding:2px 8px; margin-left:auto; white-space:nowrap; flex:none; }
+  .chev{ flex:none; display:flex; margin-left:8px; }
+
+  /* ---- 誰ですか ---- */
+  .me{ background:var(--card); border-radius:18px; padding:15px; margin:0 18px 10px; }
+  .me .l{ font-size:11px; color:var(--ink3); }
+  .me .h{ display:flex; align-items:center; gap:12px; margin-top:4px; }
+  .me .n{ font-family:'Dela Gothic One',sans-serif; font-size:22px; }
+  .me button{
+    margin-left:auto; background:none; border:1.5px solid var(--line); border-radius:12px;
+    padding:8px 14px; cursor:pointer; font-family:'RocknRoll One',sans-serif; font-size:11.5px; color:var(--ink2);
+  }
+
+  /* ---- 人とアカウント ---- */
+  .acc{ display:flex; align-items:baseline; gap:9px; margin-top:8px; }
+  .acc .k{ font-size:10px; color:var(--ink4); flex:none; width:52px; }
+  .acc .n{ font-size:12.5px; }
+  .acc .u{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:9.5px; color:var(--ink4); letter-spacing:-.04em; margin-left:auto; }
+  .strow{ background:var(--card); border-radius:16px; padding:14px 15px; margin:0 18px 8px; }
+  .strow .sh{ display:flex; align-items:baseline; gap:10px; }
+  .strow .sn{ font-size:13.5px; }
+  .strow .sg{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:11.5px; color:var(--ink2); letter-spacing:-.04em; margin-left:auto; }
+  .strow .su{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:9.5px; color:var(--ink4); letter-spacing:-.04em; margin-top:4px; }
+  .strow .link{ margin-top:11px; display:flex; gap:8px; align-items:center; }
+  .strow select{
+    flex:1; height:42px; background:var(--sunken); border:1.5px solid var(--line); border-radius:12px;
+    color:var(--ink); padding:0 11px; font-family:'RocknRoll One',sans-serif; font-size:12.5px; outline:none;
+  }
+  .strow select option{ background:var(--card); }
+  .strow .go{
+    height:42px; padding:0 15px; border-radius:12px; border:0; background:var(--lime); color:var(--invert);
+    font-family:'Dela Gothic One',sans-serif; font-size:12px; cursor:pointer; flex:none;
+  }
+
+  /* ---- スプリット ---- */
+  .sp{ background:var(--card); border-radius:16px; padding:14px 15px; margin:0 18px 8px; }
+  .sp .h{ display:flex; align-items:center; gap:10px; }
+  .sp .nm{ font-family:'Dela Gothic One',sans-serif; font-size:14px; }
+  .sp .now{ font-size:9.5px; background:var(--lime); color:var(--invert); border-radius:20px; padding:2px 9px; flex:none; }
+  .sp .d{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:12px; color:var(--ink2); letter-spacing:-.04em; margin-top:7px; }
+  .sp .est{ font-size:10px; color:var(--red); margin-top:4px; }
+  .sp .n{ font-size:10px; color:var(--ink4); margin-top:4px; }
+  .sp button{
+    margin-top:11px; background:none; border:1.5px solid var(--line); border-radius:12px;
+    padding:8px 14px; cursor:pointer; font-family:'RocknRoll One',sans-serif; font-size:11.5px; color:var(--ink2);
+  }
+
+  /* ---- 履歴 ---- */
+  .lg{ background:var(--card); border-radius:14px; padding:12px 14px; margin:0 18px 7px; }
+  .lg .t{ display:flex; align-items:baseline; gap:9px; }
+  .lg .w{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:10.5px; color:var(--ink3); letter-spacing:-.04em; flex:none; }
+  .lg .p{ font-size:11px; color:var(--ink2); }
+  .lg .f{ font-size:11.5px; margin-top:5px; }
+  .lg .v{ font-size:11px; color:var(--ink3); margin-top:3px; }
+  .lg .v b{ font-family:'Roboto Mono',monospace; font-weight:700; color:var(--ink2); letter-spacing:-.04em; }
+
+  /* ---- 入力 ---- */
+  .fld{ margin-top:14px; }
+  .fld label{ display:block; font-size:11px; color:var(--ink3); margin-bottom:6px; }
+  .fld input, .fld select{
+    width:100%; height:46px; background:var(--sunken); border:1.5px solid var(--line); border-radius:12px;
+    color:var(--ink); padding:0 13px; font-family:'RocknRoll One',sans-serif; font-size:14px; outline:none;
+  }
+  .fld input[type=date]{ font-family:'Roboto Mono',monospace; font-weight:700; letter-spacing:-.04em; }
+  .fld input:focus{ border-color:var(--purple); }
+  .stepper{ display:flex; align-items:center; gap:10px; }
+  .stepper button{
+    width:46px; height:46px; border-radius:12px; border:1.5px solid var(--line); background:none;
+    color:var(--ink); font-size:20px; cursor:pointer;
+  }
+  .stepper .v{ flex:1; text-align:center; font-family:'Roboto Mono',monospace; font-weight:700; font-size:22px; letter-spacing:-.04em; }
+  .seg2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+  .seg2 button{
+    height:46px; border-radius:12px; border:1.5px solid var(--line); background:none; color:var(--ink2);
+    font-family:'RocknRoll One',sans-serif; font-size:13px; cursor:pointer;
+  }
+  .seg2 button.on{ background:var(--purple); border-color:var(--purple); color:var(--ink); }
+  .chk{ display:flex; align-items:center; gap:10px; margin-top:11px; cursor:pointer; }
+  .chk .box{
+    width:22px; height:22px; border-radius:7px; border:1.5px solid var(--line); flex:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .chk .box.on{ background:var(--red); border-color:var(--red); }
+  .chk span{ font-size:11.5px; color:var(--ink2); }
+
+  .btn{
+    display:block; width:calc(100% - 36px); margin:12px 18px 0; height:50px;
+    border-radius:14px; border:2px solid var(--line); background:none; color:var(--ink2);
+    font-family:'RocknRoll One',sans-serif; font-size:13px; cursor:pointer;
+  }
+  .btn.solid{ background:var(--lime); border-color:var(--lime); color:var(--invert); font-family:'Dela Gothic One',sans-serif; }
+  .warn{ background:var(--card); border:1.5px solid var(--red); border-radius:16px; padding:14px 15px; margin:0 18px 10px; }
+
+  nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:16; height:70px; background:var(--card);
+    box-shadow:0 -6px 18px rgba(0,0,0,.38); display:flex; justify-content:center;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav .tabs{ width:100%; max-width:430px; display:flex; align-items:center; }
+  nav .tab{ flex:1; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; background:none; border:0; cursor:pointer; padding:0; }
+  nav .tab .lb{ font-family:'RocknRoll One',sans-serif; font-size:9.5px; color:var(--ink3); }
+  .badge{
+    position:absolute; top:-5px; right:-8px; min-width:17px; height:17px; border-radius:20px;
+    background:var(--red); display:flex; align-items:center; justify-content:center; padding:0 4px;
+    font-family:'Roboto Mono',monospace; font-weight:700; font-size:9.5px; color:#fff; letter-spacing:0;
+  }
+  .toast{
+    position:fixed; left:50%; bottom:88px; transform:translateX(-50%); z-index:40;
+    background:var(--card); border:1.5px solid var(--line); border-radius:14px;
+    padding:12px 16px; font-size:12.5px; max-width:340px; text-align:center;
+    box-shadow:0 8px 26px rgba(0,0,0,.45);
+  }
+  .toast.err{ border-color:var(--red); }
+
+  /* 地色（#241C52）や面（#332A70）と紛れないよう、ベタ塗りにする */
+  .toast{
+    background:var(--lime); border:0; color:var(--invert);
+    font-family:'Dela Gothic One','Hiragino Sans',sans-serif; line-height:1.6;
+    box-shadow:0 10px 30px rgba(0,0,0,.55);
+  }
+  .toast.err{ background:var(--red); color:#FFFFFF; border:0; }
+  .toast .btn, .toast button{
+    background:rgba(36,28,82,.14); border:0; color:var(--invert);
+    font-family:'RocknRoll One',sans-serif;
+  }
+  .toast.err .btn, .toast.err button{ background:rgba(255,255,255,.2); color:#FFFFFF; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <button class="iconbtn" id="back" hidden>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6BCF2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+    </button>
+    <div class="ttl dela" id="title">設定</div>
+    <div class="saving" id="savestate"></div>
+  </header>
+  <main id="app"></main>
+  <nav><div class="tabs" id="tabbar"></div></nav>
+</div>
+
+<script>
+// ===================================================================
+// 設定画面。
+// ログインは作っていない。この端末が「あなたは誰？」を覚えているだけ。
+// だから操作は全員に開いていて、誰がやったかを edit_logs に全部残す。
+// ===================================================================
+const LS = { url:'apexGasUrl', key:'apexEditKey', person:'apexPersonId' };
+const MEM = {};
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return MEM[k] || null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){ MEM[k] = v; } }
+};
+
+
+/**
+ * 画面をまたいで結果を覚えておく置き場。
+ * タブを切り替えるたびにGASを待つと毎回2〜3秒かかるので、前回の内容で先に描く。
+ * 中身は数秒後に裏で最新へ差し替わる。
+ */
+const CACHE_PREFIX = 'apexCache:';
+function cacheGet(key){
+  try{
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    return (o && o.data) ? o.data : null;
+  }catch(e){ return null; }
+}
+function cacheSet(key, data){
+  try{ localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), data: data })); }
+  catch(e){ /* 容量超過などは無視。次回また取りに行くだけ */ }
+}
+
+/**
+ * 他の画面ぶんを裏で取っておく。
+ * タブを初めて開くときの2〜3秒を無くすため。いま見ている画面が出てから走らせる。
+ * 取れなかったら黙って諦める（次に開いたときに取りに行くだけ）。
+ */
+function warmOtherScreens(myPersonId){
+  const jobs = [
+    ['home',                       { action:'home' }],
+    ['ranking:month::person',      { action:'ranking', period_kind:'month', period_value:'', axis:'person' }],
+    ['circle:',                    { action:'circle' }],
+    ['mypage:' + (myPersonId||''), myPersonId ? { action:'mypage', person_id:myPersonId } : { action:'mypage' }],
+    ['settings',                   { action:'settings' }],
+    ['masters',                    { action:'masters' }],
+    ['review_list',                { action:'review_list' }]
+  ];
+  let i = 0;
+  const next = () => {
+    if(i >= jobs.length) return;
+    const [key, params] = jobs[i++];
+    // すでに新しい控えがあるなら飛ばす（5分もてば十分）
+    let fresh = false;
+    try{
+      const raw = localStorage.getItem(CACHE_PREFIX + key);
+      if(raw){ const o = JSON.parse(raw); fresh = o && (Date.now() - o.t) < 5 * 60 * 1000; }
+    }catch(e){}
+    if(fresh){ next(); return; }
+    apiGet(params)
+      .then(j => { cacheSet(key, j); })
+      .catch(() => {})
+      .then(() => setTimeout(next, 300));   // 1本ずつ。まとめて叩かない
+  };
+  setTimeout(next, 1200);   // いま見ている画面の描画を邪魔しない
+}
+
+const S = {
+  url: store.get(LS.url) || '',
+  key: store.get(LS.key) || '',
+  personId: store.get(LS.person) || '',
+  data: null,
+  masters: null,
+  view: 'main',    // main | people | person | splits | splitEdit | history
+  target: null,
+  draft: null,
+  pending: 0,
+  saving: 0
+};
+
+const app = document.getElementById('app');
+const titleEl = document.getElementById('title');
+const backEl = document.getElementById('back');
+const saveEl = document.getElementById('savestate');
+
+function apiGet(params){
+  const q = new URLSearchParams(params).toString();
+  return fetch(S.url + '?' + q, { method:'GET' })
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(j => { if(!j.ok) throw new Error(j.error || '取得に失敗しました'); return j; });
+}
+function apiPost(body){
+  const payload = Object.assign({}, body, { edit_key:S.key, person_id:S.personId });
+  markSaving(1);
+  return fetch(S.url, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify(payload) })
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(j => { if(!j.ok) throw new Error(j.error || '保存に失敗しました'); return j; })
+    .finally(() => markSaving(-1));
+}
+function markSaving(d){ S.saving += d; saveEl.textContent = S.saving > 0 ? '保存中…' : ''; }
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function toast(msg, isError){
+  const old = document.getElementById('toast'); if(old) old.remove();
+  const t = document.createElement('div'); t.id='toast'; t.className='toast'+(isError?' err':''); t.textContent=msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), isError ? 4600 : 2400);
+}
+const CHEV = '<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8478C4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></span>';
+
+/** 取り込みの設定は、スクショを取り込む人だけに見せる */
+function isAdmin(){
+  const owner = S.masters ? String(S.masters.default_imported_by_person_id || '') : '';
+  return !owner || owner === S.personId;
+}
+
+// ===================================================================
+// 下タブ
+// ===================================================================
+const TABS = [
+  ['ホーム','<path d="M4 11.4 12 5l8 6.4"></path><path d="M6.4 10.6V19h11.2v-8.4"></path>','../home/'],
+  ['ランキング','<path d="M5 20V11"></path><path d="M12 20V4"></path><path d="M19 20v-6"></path>','../ranking/'],
+  ['サークル','<circle cx="5.5" cy="9.6" r="2.4"></circle><circle cx="18.5" cy="9.6" r="2.4"></circle><circle cx="12" cy="8.6" r="3"></circle><path d="M7 19a5 5 0 0 1 10 0"></path><path d="M1.4 17a4.6 4.6 0 0 1 4.4-4.2"></path><path d="M22.6 17a4.6 4.6 0 0 0-4.4-4.2"></path>','../circle/'],
+  ['マイページ','<circle cx="12" cy="8" r="3.6"></circle><path d="M5 20a7 7 0 0 1 14 0"></path>','../mypage/'],
+  ['登録','<path d="M12 4v11"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M5 19h14"></path>','../record/']
+];
+function renderTabs(){
+  document.getElementById('tabbar').innerHTML = TABS.map(([name, icon, href]) => {
+    const badge = (name === '登録' && S.pending) ? '<div class="badge">' + S.pending + '</div>' : '';
+    const svg = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#A99CE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + icon + '</svg>';
+    return '<button class="tab" data-href="' + href + '"><div style="position:relative">' + svg + badge + '</div><span class="lb">' + name + '</span></button>';
+  }).join('');
+  document.querySelectorAll('#tabbar .tab[data-href]').forEach(b => {
+    b.onclick = () => { location.href = b.dataset.href; };
+  });
+}
+
+// ===================================================================
+// 設定トップ
+// ===================================================================
+function renderMain(){
+  const d = S.data;
+  titleEl.textContent = '設定'; backEl.hidden = true;
+  const me = (d.persons || []).find(p => p.person_id === S.personId);
+
+  const admin = isAdmin() ? (
+    '<div class="sechead"><div class="t">取り込みの設定</div></div>' +
+    '<div class="sub" style="margin:-4px 18px 11px">この2つは <b>管理者にしか出しません</b>。スクショを取り込む人だけが使うものです。</div>' +
+    '<div class="row flat"><div><div class="rtitle">編集キー</div>' +
+      '<div class="rdesc">これが無いと、直した内容を保存できません</div></div>' +
+      '<div class="rvalt" style="color:' + (S.key ? 'var(--lime)' : 'var(--red)') + '">' +
+      (S.key ? 'この端末に設定ずみ' : '未設定') + '</div></div>' +
+    '<div class="row flat"><div style="flex:1"><div class="rtitle">見張っているフォルダ</div>' +
+      '<div class="rdesc">タップするとGoogleドライブが開きます。' + d.admin.interval_min + '分ごとに読みにいっています</div></div>' +
+      '<span class="adm">管理者専用</span></div>' +
+    (d.admin.folder_url
+      ? '<button class="btn" id="openFolder" style="margin-top:2px">' + esc(d.admin.folder_name) + ' をドライブで開く</button>'
+      : '<div class="sub" style="margin:0 18px">フォルダIDが設定されていません</div>') +
+    ingestBlock()
+  ) : '';
+
+  return '<div class="me"><div class="l">この端末を使っているのは</div>' +
+      '<div class="h"><div class="n">' + esc(me ? me.name : '（未設定）') + '</div>' +
+      '<button id="rechoose">選び直す</button></div>' +
+      '<div class="sub" style="margin-top:11px">ログインは作っていません。<b>この端末が誰かを覚えているだけ</b>です。' +
+      '編集履歴には、ここで選んだ人の名前が残ります。</div></div>' +
+
+    '<div class="sechead"><div class="t">中身の管理</div></div>' +
+    '<button class="row" data-go="people"><div><div class="rtitle">人とアカウント</div>' +
+      '<div class="rdesc">改名、サブアカの追加、野良を人に紐づける</div></div>' +
+      '<div class="rval">' + d.persons.length + '人 / ' + d.account_count + 'アカウント</div>' + CHEV + '</button>' +
+    '<button class="row" data-go="splits"><div><div class="rtitle">スプリットの日程</div>' +
+      '<div class="rdesc">年4回。EAの発表に合わせて手で入れます</div></div>' +
+      '<div class="rvalt">' + esc(nowSplitLabel()) + '</div>' + CHEV + '</button>' +
+    '<button class="row" data-go="history"><div><div class="rtitle">編集履歴</div>' +
+      '<div class="rdesc">誰がいつ何を直したか</div></div>' +
+      '<div class="rvalt">直近' + d.logs.length + '件</div>' + CHEV + '</button>' +
+
+    admin +
+
+    '<div class="sechead"><div class="t">このアプリについて</div></div>' +
+    '<div class="card"><div class="sub">' +
+      '4人のApexサークルの戦績を、リザルト画面のスクショから集計しています。<br>' +
+      '置いた画像は <b>Googleドライブ</b> に、数字は <b>Googleスプレッドシート</b> に入ります。' +
+      '読み取りには <b>GoogleのAI</b> を使います。</div></div>' +
+    '<div class="row flat"><div><div class="rtitle">いま使っているAI</div></div>' +
+      '<div class="rval">' + esc(d.admin.gemini_model) + '</div></div>' +
+    '<div class="card"><div class="sub">' +
+      '読み取りのたびに選び直してはいません。<b>この1つを使い続けます</b>。' +
+      '混雑したときは同じモデルのまま待って、数回やり直します。<br><br>' +
+      '撮り逃した試合は、あきらめる作りです。手入力で足す機能はありません。</div></div>' +
+    '<div style="height:24px"></div>';
+}
+
+
+/**
+ * 取り込みの結果。失敗の理由が見えないと、同じ撮り方を繰り返してしまう。
+ * 「リザルト」タブ以外を撮ったものは直しようがないので、次から気をつけてもらうしかない。
+ */
+function ingestBlock(){
+  const g = S.data.ingest;
+  if(!g) return '';
+  const c = g.counts || {};
+  const rows = [
+    ['imported', '取り込みずみ', 'var(--ink2)'],
+    ['queued', '取り込み待ち', 'var(--ink2)'],
+    ['skipped_duplicate', '同じ画像なので飛ばした', 'var(--ink3)'],
+    ['failed', '読めなかった', 'var(--red)']
+  ].filter(([k]) => c[k]).map(([k, label, color]) =>
+    '<div class="acc"><span class="n" style="font-size:12px">' + label + '</span>' +
+    '<span class="u" style="color:' + color + ';font-size:12px">' + c[k] + '枚</span></div>').join('');
+
+  const fails = (g.failures || []).length
+    ? '<div class="warn" style="margin-top:10px">' +
+      '<div class="dela" style="font-size:12.5px;color:var(--red)">読めなかった ' + g.failures.length + '枚</div>' +
+      '<div class="sub" style="margin-top:9px">' + g.failures.map(f =>
+        '<b style="color:var(--ink2)">' + esc(f.file_name) + '</b><br>' +
+        esc(String(f.error).split(String.fromCharCode(10))[0].split(': ')[0])
+      ).join('<br><br>') + '</div>' +
+      '<div class="sub" style="margin-top:11px;color:var(--ink2)">' +
+      'PS5のリザルト画面は<b>タブが分かれています</b>。' +
+      '「ライブ／リザルト」の<b>リザルト</b>側で、さらに<b>「リザルト」タブ</b>を選んでから撮ってください。' +
+      '順位と3人ぶんの成績は、そこにしか出ません。</div>' +
+      '</div>'
+    : '';
+
+  return '<div class="sechead"><div class="t">取り込みの結果</div></div>' +
+    '<div class="card">' + (rows || '<div class="sub">まだありません</div>') + '</div>' +
+    fails;
+}
+
+function nowSplitLabel(){
+  const now = (S.data.splits || []).find(s => s.is_now);
+  return now ? now.label : ((S.data.splits || [])[0] ? S.data.splits[0].label : '未登録');
+}
+
+// ===================================================================
+// 人とアカウント
+// ===================================================================
+function renderPeople(){
+  const d = S.data;
+  titleEl.textContent = '人とアカウント'; backEl.hidden = false;
+
+  const people = d.persons.map(p => {
+    const kinds = p.accounts.map(a => a.kind === 'main' ? '本アカ' : 'サブアカ');
+    return '<button class="row" data-person="' + esc(p.person_id) + '">' +
+      '<div><div class="rtitle">' + esc(p.name) + '</div>' +
+      '<div class="rdesc">' + (kinds.length ? esc(kinds.join('・')) : 'アカウントなし') + '</div></div>' +
+      '<div class="rval">' + p.accounts.length + '</div>' + CHEV + '</button>';
+  }).join('');
+
+  const opts = d.persons.map(p => '<option value="' + esc(p.person_id) + '">' + esc(p.name) + '</option>').join('');
+  const strangers = d.strangers.map(s =>
+    '<div class="strow"><div class="sh"><div class="sn">' + esc(s.name) + '</div>' +
+      '<div class="sg">' + s.games + '戦</div></div>' +
+      '<div class="su">' + esc(s.uid || '（UIDなし）') + '</div>' +
+      '<div class="link"><select data-sel="' + esc(s.account_id) + '">' +
+        '<option value="">（誰に紐づける？）</option>' + opts + '</select>' +
+        '<button class="go" data-link="' + esc(s.account_id) + '">紐づける</button></div></div>').join('');
+
+  return '<div class="sechead" style="margin-top:4px"><div class="t">人</div>' +
+      '<div class="n">' + d.persons.length + '人</div></div>' +
+    '<div class="sub" style="margin:-4px 18px 11px">名前をタップすると、アカウントと名前の履歴が開きます。</div>' +
+    people +
+    '<div class="sechead"><div class="t">まだ誰にも紐づいていない</div>' +
+      '<div class="n">' + d.strangers.length + '</div></div>' +
+    '<div class="sub" style="margin:-4px 18px 11px">知らないUIDは <b>自動で野良あつかい</b> にして、集計から外しています。' +
+      '野良は <b>誰のものでもありません</b>。メンバーが持つのは本アカとサブアカだけです。</div>' +
+    (strangers || '<div class="card"><div class="sub">いまはありません。</div></div>') +
+    (d.strangers.length ? '<div class="card" style="margin-top:4px"><div class="sub">紐づけると、' +
+      '<b>その人の過去の試合もまとめて数え直します。</b>' +
+      '「実はマン坊のサブアカだった」があとから分かっても、最初から数えていたことにできます。</div></div>' : '') +
+    '<div style="height:24px"></div>';
+}
+
+function renderPerson(){
+  const p = S.target;
+  titleEl.textContent = p.name; backEl.hidden = false;
+
+  const accs = p.accounts.map(a =>
+    '<div class="acc"><span class="k">' + (a.kind === 'main' ? '本アカ' : 'サブアカ') + '</span>' +
+    '<span class="n">' + esc(a.name) + '</span>' +
+    '<span class="u">' + esc(a.uid || '—') + '</span></div>').join('');
+
+  const aliases = [].concat.apply([], p.accounts.map(a => a.aliases || []));
+  const hist = aliases.length
+    ? aliases.map(al =>
+        '<div class="acc"><span class="n">' + esc(al.raw_name) + '</span>' +
+        '<span class="u">' + (al.is_current ? 'いま使っている名前　' + esc(al.first_seen) + ' 〜'
+                                            : '〜 ' + esc(al.last_seen)) + '</span></div>').join('')
+    : '<div class="sub">まだ履歴はありません。</div>';
+
+  return '<div class="sec" style="margin-top:4px">表示名</div>' +
+    '<div class="card"><div class="fld" style="margin-top:0">' +
+      '<input id="p_name" maxlength="20" value="' + esc(S.draft.name) + '">' +
+      '<div class="sub" style="margin-top:8px">画面に出る名前です。ゲーム内の名前とは別に持てます。</div>' +
+    '</div></div>' +
+    '<button class="btn solid" id="saveName">名前を直す</button>' +
+    '<div class="sechead"><div class="t">アカウント</div><div class="n">' + p.accounts.length + '</div></div>' +
+    '<div class="card">' + (accs || '<div class="sub">まだありません</div>') + '</div>' +
+    '<div class="sec">名前の履歴</div>' +
+    '<div class="sub" style="margin:-4px 18px 11px">ゲーム内で改名しても、過去の試合が迷子にならないように残します。</div>' +
+    '<div class="card">' + hist + '</div>' +
+    '<div class="card"><div class="sub">アカウントを足すには、' +
+      '<b>人とアカウント</b> の「まだ誰にも紐づいていない」から紐づけてください。' +
+      '新しいアカウントは、そのアカウントで撮ったスクショを取り込むと自動で出てきます。</div></div>' +
+    '<div style="height:24px"></div>';
+}
+
+// ===================================================================
+// スプリット
+// ===================================================================
+function renderSplits(){
+  const d = S.data;
+  titleEl.textContent = 'スプリットの日程'; backEl.hidden = false;
+
+  const est = [];
+  const rows = d.splits.map(s => {
+    if(s.start_estimated) est.push(s.label + 'の開始（' + s.start_date + '）');
+    if(s.end_estimated)   est.push(s.label + 'の終了（' + s.end_date + '）');
+    const note = s.start_estimated && s.end_estimated ? '両方とも推定'
+      : s.start_estimated ? '開始日は推定'
+      : s.end_estimated ? '終了日は推定' : '';
+    return '<div class="sp"><div class="h"><div class="nm">' + esc(s.label) + '</div>' +
+      (s.is_now ? '<span class="now">記録中</span>' : '') + '</div>' +
+      '<div class="d">' + esc(s.start_date) + ' 〜 ' + esc(s.end_date) + '</div>' +
+      (note ? '<div class="est">' + note + '</div>' : '') +
+      '<div class="n">' + (s.session_count ? s.session_count + '日ぶんの記録' : '記録なし') + '</div>' +
+      '<button data-edit="' + esc(s.split_id) + '">日程を直す</button></div>';
+  }).join('');
+
+  return '<div class="card" style="margin-top:4px"><div class="sub">' +
+      '<b>自動では取れません。</b>EAは日程を機械が読める形で出していないので、ここで手で入れます。年4回の作業です。</div></div>' +
+    rows +
+    '<button class="btn" id="addSplit">日程を足す</button>' +
+    (est.length
+      ? '<div class="warn" style="margin-top:14px"><div class="dela" style="font-size:12.5px;color:var(--red)">' +
+        est.length + 'つの日付が推定です</div><div class="sub" style="margin-top:8px">' +
+        est.map(e => '・' + esc(e)).join('<br>') +
+        '<br><br>EAの発表が出たら、ここを直してください。<b>称号と月間表彰の区切りが変わります。</b></div></div>'
+      : '') +
+    '<div style="height:24px"></div>';
+}
+
+function renderSplitEdit(){
+  const g = S.draft;
+  titleEl.textContent = g.isNew ? '日程を足す' : '日程を直す'; backEl.hidden = false;
+
+  return '<div class="sec" style="margin-top:4px">シーズンとスプリット</div>' +
+    '<div class="card">' +
+      '<div class="fld" style="margin-top:0"><label>シーズン</label>' +
+        '<div class="stepper"><button id="sm">−</button>' +
+        '<div class="v" id="sv">' + g.season_no + '</div><button id="sp2">＋</button></div></div>' +
+      '<div class="fld"><label>スプリット</label><div class="seg2">' +
+        '<button class="' + (g.split_no === 1 ? 'on' : '') + '" data-sn="1">1</button>' +
+        '<button class="' + (g.split_no === 2 ? 'on' : '') + '" data-sn="2">2</button></div></div>' +
+      '<div class="sub" style="margin-top:11px">画面には <b>S' + g.season_no + ' スプリット' + g.split_no + '</b> と出ます。</div>' +
+    '</div>' +
+    '<div class="sec">開始日</div>' +
+    '<div class="card"><div class="fld" style="margin-top:0">' +
+      '<input type="date" id="d_start" value="' + esc(g.start_date) + '">' +
+      '<div class="chk" id="ck_start"><div class="box' + (g.start_estimated ? ' on' : '') + '">' +
+      (g.start_estimated ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l5 5L19 7"></path></svg>' : '') +
+      '</div><span>この日付は推定（EA未発表）</span></div></div></div>' +
+    '<div class="sec">終了日</div>' +
+    '<div class="card"><div class="fld" style="margin-top:0">' +
+      '<input type="date" id="d_end" value="' + esc(g.end_date) + '">' +
+      '<div class="chk" id="ck_end"><div class="box' + (g.end_estimated ? ' on' : '') + '">' +
+      (g.end_estimated ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l5 5L19 7"></path></svg>' : '') +
+      '</div><span>この日付は推定（EA未発表）</span></div></div></div>' +
+    '<div class="card"><div class="sub">日程を変えると、記録ずみのセッションを日付で貼り直します。' +
+      '<b>称号と月間表彰の区切りが変わります。</b></div></div>' +
+    '<button class="btn solid" id="saveSplit">これで決める</button>' +
+    '<button class="btn" id="cancelSplit">やめる</button><div style="height:24px"></div>';
+}
+
+// ===================================================================
+// 編集履歴
+// ===================================================================
+function renderHistory(){
+  const d = S.data;
+  titleEl.textContent = '編集履歴'; backEl.hidden = false;
+  const rows = d.logs.map(l => {
+    const m = String(l.at).match(/(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    const when = m ? (Number(m[1]) + '/' + Number(m[2]) + ' ' + m[3] + ':' + m[4]) : '';
+    return '<div class="lg"><div class="t"><span class="w">' + esc(when) + '</span>' +
+      '<span class="p">' + esc(l.person_name) + '</span></div>' +
+      '<div class="f">' + esc(TABLE_JA[l.target_table] || l.target_table) + '　' + esc(l.field) + '</div>' +
+      '<div class="v"><b>' + esc(l.before || '空') + '</b> → <b>' + esc(l.after) + '</b></div></div>';
+  }).join('');
+
+  return '<div class="card" style="margin-top:4px"><div class="sub">' +
+      '全員が直せる代わりに、<b>誰がいつ何を直したかは全部残します。</b>消す機能は作りません。</div></div>' +
+    '<div class="sechead"><div class="t">直近' + d.logs.length + '件</div>' +
+      '<div class="n">全' + d.log_total + '件</div></div>' +
+    (rows || '<div class="card"><div class="sub">まだ記録がありません。</div></div>') +
+    (d.log_total > d.logs.length ? '<button class="btn" id="moreLogs">もっと見る</button>' : '') +
+    '<div style="height:24px"></div>';
+}
+
+const TABLE_JA = {
+  entries:'試合の記録', matches:'試合', persons:'人', accounts:'アカウント',
+  splits:'スプリット', circle_goals:'サークル目標', person_profiles:'メンバー紹介'
+};
+
+// ===================================================================
+// 描画と結線
+// ===================================================================
+function render(){
+  renderTabs();
+  const v = S.view;
+  if(v === 'people')          app.innerHTML = renderPeople();
+  else if(v === 'person')     app.innerHTML = renderPerson();
+  else if(v === 'splits')     app.innerHTML = renderSplits();
+  else if(v === 'splitEdit')  app.innerHTML = renderSplitEdit();
+  else if(v === 'history')    app.innerHTML = renderHistory();
+  else                        app.innerHTML = renderMain();
+  bind();
+}
+
+function bind(){
+  app.querySelectorAll('[data-go]').forEach(b => {
+    b.onclick = () => { S.view = b.dataset.go; render(); window.scrollTo({ top:0 }); };
+  });
+  const rc = document.getElementById('rechoose');
+  if(rc) rc.onclick = () => { location.href = '../record/'; };
+  const of = document.getElementById('openFolder');
+  if(of) of.onclick = () => { window.open(S.data.admin.folder_url, '_blank'); };
+
+  app.querySelectorAll('[data-person]').forEach(b => {
+    b.onclick = () => {
+      S.target = S.data.persons.find(p => p.person_id === b.dataset.person);
+      S.draft = { name: S.target.name };
+      S.view = 'person'; render(); window.scrollTo({ top:0 });
+    };
+  });
+
+  const sn = document.getElementById('saveName');
+  if(sn) sn.onclick = async () => {
+    const e = document.getElementById('p_name');
+    const name = e ? e.value.trim() : '';
+    if(!S.key){ toast('編集キーが要ります。登録タブの設定で入れてください', true); return; }
+    if(!name){ toast('名前が空です', true); return; }
+    try{
+      await apiPost({ action:'rename_person', person_id:S.target.person_id, display_name:name });
+      toast('名前を直しました');
+      await load(); S.view = 'people'; render();
+    }catch(err){ toast(err.message, true); }
+  };
+
+  app.querySelectorAll('[data-link]').forEach(b => {
+    b.onclick = async () => {
+      const aid = b.dataset.link;
+      const sel = app.querySelector('[data-sel="' + aid + '"]');
+      const pid = sel ? sel.value : '';
+      if(!pid){ toast('紐づける人を選んでください', true); return; }
+      if(!S.key){ toast('編集キーが要ります。登録タブの設定で入れてください', true); return; }
+      const who = S.data.persons.find(p => p.person_id === pid);
+      const st = S.data.strangers.find(s => s.account_id === aid);
+      if(!confirm(st.name + ' を ' + who.name + ' のサブアカにします。\n過去の ' + st.games + '戦 もまとめて数え直します。よろしいですか？')) return;
+      try{
+        const r = await apiPost({ action:'link_account', account_id:aid, person_id:pid, kind:'sub' });
+        toast(who.name + ' に紐づけました（' + r.recounted_games + '戦を数え直し）');
+        await load(); S.view = 'people'; render();
+      }catch(err){ toast(err.message, true); }
+    };
+  });
+
+  // ---- スプリット ----
+  app.querySelectorAll('[data-edit]').forEach(b => {
+    b.onclick = () => {
+      const s = S.data.splits.find(x => x.split_id === b.dataset.edit);
+      S.draft = Object.assign({}, s, { isNew:false });
+      S.view = 'splitEdit'; render(); window.scrollTo({ top:0 });
+    };
+  });
+  const as = document.getElementById('addSplit');
+  if(as) as.onclick = () => {
+    const last = S.data.splits[0];
+    const season = last ? last.season_no : 30;
+    const no = last && last.split_no === 1 ? 2 : 1;
+    S.draft = { isNew:true, split_id:'', season_no:season, split_no:no,
+      start_date:'', end_date:'', start_estimated:true, end_estimated:true, label:'' };
+    S.view = 'splitEdit'; render(); window.scrollTo({ top:0 });
+  };
+
+  const pullSplit = () => {
+    const ds = document.getElementById('d_start'), de = document.getElementById('d_end');
+    if(ds) S.draft.start_date = ds.value;
+    if(de) S.draft.end_date = de.value;
+  };
+  const sm = document.getElementById('sm');
+  if(sm) sm.onclick = () => { pullSplit(); S.draft.season_no = Math.max(1, S.draft.season_no - 1); render(); };
+  const sp2 = document.getElementById('sp2');
+  if(sp2) sp2.onclick = () => { pullSplit(); S.draft.season_no += 1; render(); };
+  app.querySelectorAll('[data-sn]').forEach(b => {
+    b.onclick = () => { pullSplit(); S.draft.split_no = Number(b.dataset.sn); render(); };
+  });
+  const cs = document.getElementById('ck_start');
+  if(cs) cs.onclick = () => { pullSplit(); S.draft.start_estimated = !S.draft.start_estimated; render(); };
+  const ce = document.getElementById('ck_end');
+  if(ce) ce.onclick = () => { pullSplit(); S.draft.end_estimated = !S.draft.end_estimated; render(); };
+
+  const ss = document.getElementById('saveSplit');
+  if(ss) ss.onclick = async () => {
+    pullSplit();
+    const g = S.draft;
+    if(!S.key){ toast('編集キーが要ります。登録タブの設定で入れてください', true); return; }
+    if(!g.start_date || !g.end_date){ toast('開始日と終了日を入れてください', true); return; }
+    if(g.start_date >= g.end_date){ toast('終了日は開始日より後にしてください', true); return; }
+    try{
+      const r = await apiPost({ action:'upsert_split',
+        split_id: g.isNew ? '' : g.split_id,
+        season_no:g.season_no, split_no:g.split_no,
+        start_date:g.start_date, end_date:g.end_date,
+        start_estimated:!!g.start_estimated, end_estimated:!!g.end_estimated });
+      toast('決めました' + (r.moved_sessions ? '（' + r.moved_sessions + '日ぶんを貼り直し）' : ''));
+      await load(); S.view = 'splits'; render();
+    }catch(err){ toast(err.message, true); }
+  };
+  const cx = document.getElementById('cancelSplit');
+  if(cx) cx.onclick = () => { S.view = 'splits'; render(); window.scrollTo({ top:0 }); };
+
+  const ml = document.getElementById('moreLogs');
+  if(ml) ml.onclick = async () => { await load(200); S.view = 'history'; render(); };
+
+  backEl.onclick = () => {
+    if(S.view === 'person') S.view = 'people';
+    else if(S.view === 'splitEdit') S.view = 'splits';
+    else S.view = 'main';
+    render(); window.scrollTo({ top:0 });
+  };
+}
+
+// ===================================================================
+// 通信
+// ===================================================================
+async function load(logLimit){
+  if(!S.data){
+    const cached = cacheGet('settings');
+    if(cached){ S.data = cached; S.masters = cacheGet('masters') || S.masters; render(); }
+    else{
+      app.innerHTML = '<div class="card" style="margin-top:8px">' +
+        '<div class="dela" style="font-size:15px">サーバーに聞いています…</div>' +
+        '<div class="sub" style="margin-top:8px">数秒かかります。そのままお待ちください。</div></div>';
+    }
+  }
+  const [d, m, h] = await Promise.all([
+    apiGet(logLimit ? { action:'settings', log_limit:logLimit } : { action:'settings' }),
+    S.masters ? Promise.resolve(S.masters) : apiGet({ action:'masters' }).catch(() => null),
+    apiGet({ action:'home' }).catch(() => null)
+  ]);
+  S.data = d;
+  cacheSet('settings', d);
+    warmOtherScreens(S.personId);
+  if(m){ S.masters = m; cacheSet('masters', m); }
+  if(h) S.pending = h.pending || 0;
+}
+
+async function boot(){
+  renderTabs();
+  if(!S.url){
+    app.innerHTML = '<div class="card" style="margin-top:8px">' +
+      '<div class="dela" style="font-size:15px">まず接続先を教えてください</div>' +
+      '<div class="sub" style="margin-top:9px">この端末はまだサーバーの場所を知りません。<br>' +
+      '<span style="color:var(--lime)">登録タブ</span>でWebアプリのURLを保存してください。</div></div>' +
+      '<button class="btn" id="go" style="border-color:var(--lime);color:var(--lime)">登録タブをひらく</button>';
+    document.getElementById('go').onclick = () => { location.href = '../record/'; };
+    return;
+  }
+  try{
+    await load();
+    render();
+  }catch(e){
+    app.innerHTML = '<div class="card" style="margin-top:8px">' +
+      '<div class="dela" style="font-size:15px">つながりませんでした</div>' +
+      '<div class="sub" style="margin-top:9px">' + esc(e.message) + '</div></div>' +
+      '<button class="btn" id="again">もう一度ためす</button>';
+    document.getElementById('again').onclick = boot;
+  }
+}
+
+boot();
+</script>
+
+<script>
+// ホーム画面のアイコンから開けるようにする。電波が悪くても画面自体は出る。
+// 数字の控えは画面側（localStorage）が持っているので、ここでは触らない。
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(function () {
+      // 登録できなくてもアプリは普通に動く。file:// で開いたときなど
+    });
+  });
+}
+</script>
+</body>
+</html>

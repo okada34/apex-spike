@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>登録｜Apexサークル戦績</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#241C52">
+<link rel="icon" type="image/png" sizes="64x64" href="../icons/favicon-64.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="サークル戦績">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=RocknRoll+One&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#241C52; --card:#332A70; --sunken:#2E2559; --line:#493D96; --dim:#3B3178;
+    --purple:#7C5CFF; --yellow:#FFE646; --lime:#C8FF00; --red:#FF5470;
+    --ink:#FFFFFF; --ink2:#C6BCF2; --ink3:#A99CE0; --ink4:#8478C4; --invert:#241C52;
+    --limeDark:#9CC700;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; padding:0; background:var(--ground); color:var(--ink);
+    font-family:'RocknRoll One','Hiragino Sans','Yu Gothic',sans-serif;
+    font-size:14px; line-height:1.7; overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .dela{ font-family:'Dela Gothic One','Hiragino Sans',sans-serif; font-weight:400; }
+  .rr{ font-family:'RocknRoll One','Hiragino Sans',sans-serif; font-weight:400; }
+  .mono{ font-family:'Roboto Mono',ui-monospace,monospace; font-weight:700; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+
+  .wrap{ max-width:430px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;
+         padding-bottom:calc(70px + env(safe-area-inset-bottom)); }
+  main{ flex:1; padding-bottom:14px; }
+
+  /* ---- ヘッダー ---- */
+  header{
+    position:sticky; top:0; z-index:20; background:var(--ground);
+    padding:16px 18px 10px; display:flex; align-items:center; gap:11px;
+  }
+  header .ttl{ font-family:'Dela Gothic One',sans-serif; font-size:17px; }
+  .iconbtn{ background:none; border:0; padding:6px; display:flex; align-items:center; cursor:pointer; }
+  .saving{ font-family:'Roboto Mono',monospace; font-size:10.5px; color:var(--ink3); margin-left:auto; }
+
+  /* ---- 黄の看板 ---- */
+  .board{
+    margin:6px 18px 0; background:var(--yellow); border-radius:18px;
+    padding:18px 18px 8px; transform:rotate(-1.4deg);
+  }
+  .board .bh{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+  .board .bt{ font-family:'Dela Gothic One',sans-serif; font-size:22px; color:var(--invert); }
+  .board .bs{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:10px; color:rgba(36,28,82,.6); letter-spacing:-.04em; }
+  .krow{ padding:14px 0; border-bottom:2px solid rgba(36,28,82,.14); }
+  .kline{ display:flex; align-items:center; gap:10px; }
+  .ktag{ font-size:10px; padding:3px 8px; border-radius:20px; flex:none; white-space:nowrap; }
+  .ktag.fix{ background:var(--red); color:#FFFFFF; }
+  .ktag.chk{ background:var(--lime); color:var(--invert); }
+  .ktag.done{ background:var(--card); color:var(--ink2); }
+  .kname{ font-family:'Dela Gothic One',sans-serif; font-size:20px; color:var(--invert); }
+  .kval{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:24px; color:var(--invert); letter-spacing:-.04em; margin-left:auto; }
+  .kdesc{ font-size:11px; color:rgba(36,28,82,.72); margin-top:6px; line-height:1.6; }
+  .bfoot{ display:flex; justify-content:flex-end; padding:10px 0 3px; }
+
+  /* ---- カード ---- */
+  .card{ background:var(--card); border-radius:18px; padding:15px; margin:0 18px 10px; }
+  .card.red{ border:1.5px solid var(--red); }
+  .sec{ font-family:'Dela Gothic One',sans-serif; font-size:15px; margin:20px 18px 11px; }
+  .sub{ font-size:11px; line-height:1.7; color:var(--ink3); }
+  .spread{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+
+  /* ---- 数値マス ---- */
+  .grid4{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; margin-top:11px; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:7px; }
+  .grid2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:11px; }
+  .fld{ background:var(--sunken); border:2px solid transparent; border-radius:10px; padding:8px 4px; text-align:center; }
+  .fld.bad{ border-color:var(--red); }
+  .fld .lb{ font-size:9px; color:var(--ink3); }
+  .fld.bad .lb{ color:var(--red); }
+  .fld input{
+    font-family:'Roboto Mono',monospace; font-weight:700; letter-spacing:-.04em;
+    font-size:18px; color:var(--ink); background:transparent; border:0; text-align:center;
+    width:100%; padding:1px 0 0; -moz-appearance:textfield;
+  }
+  .fld input::-webkit-outer-spin-button,.fld input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .fld input:focus{ outline:none; color:var(--lime); }
+  .fld .ro{ font-family:'Roboto Mono',monospace; font-weight:700; letter-spacing:-.04em; font-size:16px; margin-top:1px; }
+
+  /* ---- ボタン ---- */
+  .btn{
+    display:flex; align-items:center; justify-content:center; gap:7px;
+    height:52px; border-radius:14px; border:0; width:100%; cursor:pointer;
+    font-family:'Dela Gothic One',sans-serif; font-size:15px; color:var(--ink); background:var(--purple);
+  }
+  .btn.ghost{ background:transparent; border:2px solid var(--line); color:var(--ink2); font-family:'RocknRoll One',sans-serif; font-size:12px; }
+  .btn.redline{ background:transparent; border:2px solid var(--red); color:var(--ink); font-family:'RocknRoll One',sans-serif; font-size:12px; }
+  .btn.limeline{ background:transparent; border:2px solid var(--lime); color:var(--lime); }
+  .btn:disabled{ opacity:.45; }
+  /* 赤枠が残っている間の確定ボタン。押せるが、まだ出番ではないと分かる見た目にする */
+  .btn.wait{ background:transparent; border:2px dashed var(--line); color:var(--ink4); }
+  .textlink{ height:44px; display:flex; align-items:center; justify-content:center; font-size:11.5px; color:var(--lime); cursor:pointer; }
+  .textlink.red{ color:var(--red); }
+
+  /* ---- 一覧の試合カード ---- */
+  .mrow{
+    display:block; width:100%; text-align:left; background:var(--card); border:0;
+    border-radius:18px; padding:14px 15px; margin:0 18px 9px; cursor:pointer;
+    font-family:inherit; color:var(--ink); width:calc(100% - 36px);
+  }
+  .mrow.bad{ border-left:4px solid var(--red); }
+  .mrow.dim{ background:var(--sunken); color:var(--ink4); }
+  .pill{ font-size:9.5px; padding:3px 9px; border-radius:20px; flex:none; white-space:nowrap; }
+  .pill.red{ background:var(--red); color:#fff; }
+  .pill.lime{ background:var(--lime); color:var(--invert); }
+  .pill.gray{ background:var(--sunken); color:var(--ink2); }
+
+  /* ---- レジェンド ---- */
+  .legbox{ background:var(--sunken); border:2px solid transparent; border-radius:14px; padding:12px; margin-top:11px; }
+  .legbox.bad{ border-color:var(--red); }
+  .big3{ display:flex; gap:7px; margin-top:11px; }
+  .big3 button{
+    flex:1; height:54px; background:#3A2F86; border:0; border-left:4px solid var(--line);
+    border-radius:14px; color:var(--ink); font-family:'Dela Gothic One',sans-serif; font-size:11.5px; cursor:pointer;
+  }
+
+  /* ---- 画面下に貼り付く操作バー ---- */
+  .actbar{
+    position:sticky; bottom:calc(70px + env(safe-area-inset-bottom)); z-index:15; background:var(--ground);
+    border-top:1px solid rgba(255,255,255,.09); padding:11px 18px 12px;
+    display:flex; flex-direction:column; gap:9px;
+  }
+  .actrow{ display:flex; gap:9px; }
+  .actrow .btn{ flex:1; }
+
+  /* ---- 下タブ ---- */
+  /* 帯は画面の端から端まで。中のタブだけ本文と同じ幅に揃える。
+     .wrap の max-width の中に入れると、横に余白が出て帯が切れて見える */
+  nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:16; height:70px; background:var(--card);
+    box-shadow:0 -6px 18px rgba(0,0,0,.38); display:flex; justify-content:center;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav .tabs{ width:100%; max-width:430px; display:flex; align-items:center; }
+  nav .tab{ flex:1; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; background:none; border:0; cursor:pointer; padding:0; }
+  nav .tab .lb{ font-family:'RocknRoll One',sans-serif; font-size:9.5px; color:var(--ink3); }
+  nav .tab.on{ justify-content:center; }
+  nav .tab.on .inner{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:var(--lime); border-radius:8px; padding:7px 11px 6px; transform:rotate(-1.4deg);
+  }
+  nav .tab.on .lb{ color:var(--invert); }
+  .badge{
+    position:absolute; top:-5px; right:-8px; min-width:17px; height:17px; border-radius:20px;
+    background:var(--red); display:flex; align-items:center; justify-content:center; padding:0 4px;
+    font-family:'Roboto Mono',monospace; font-weight:700; font-size:9.5px; color:#fff; letter-spacing:0;
+  }
+
+  /* ---- シート・トースト ---- */
+  .sheet{ position:fixed; inset:0; z-index:40; background:rgba(10,6,30,.75); display:flex; align-items:flex-end; }
+  .sheetinner{
+    background:var(--ground); border-radius:22px 22px 0 0; width:100%; max-width:430px; margin:0 auto;
+    max-height:86vh; overflow:auto; padding:18px 18px 28px;
+  }
+  .lgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:7px; margin:8px 0 16px; }
+  .lgrid button{
+    padding:12px 6px; background:var(--sunken); border:0; border-left:3px solid var(--line);
+    border-radius:10px; color:var(--ink); font-family:'RocknRoll One',sans-serif; font-size:12.5px; cursor:pointer;
+  }
+  .clsline{ display:flex; align-items:center; gap:8px; margin-top:16px; font-family:'Dela Gothic One',sans-serif; font-size:13px; }
+  .dot{ width:10px; height:10px; border-radius:50%; flex:none; }
+
+  /* ---- キャラをまとめて直す ---- */
+  .bhead{
+    position:sticky; top:56px; z-index:18; background:var(--ground);
+    padding:10px 18px 12px; display:flex; align-items:center; gap:10px;
+  }
+  .bhead .cnt{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:13px; color:var(--ink2); letter-spacing:-.04em; margin-left:auto; }
+  .bmatch{ background:var(--card); border-radius:18px; padding:13px 14px 14px; margin:0 18px 12px; }
+  .bmatch .bh{ display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+  .bmatch .bseq{ font-family:'Dela Gothic One',sans-serif; font-size:14px; }
+  .bmatch .bpl{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:11px; color:var(--ink3); letter-spacing:-.04em; }
+  .bsame{
+    margin-left:auto; background:none; border:1.5px solid var(--lime); border-radius:12px;
+    padding:0 13px; min-height:44px; cursor:pointer; font-family:'RocknRoll One',sans-serif;
+    font-size:11px; color:var(--lime); white-space:nowrap;
+  }
+  .bsame:disabled{ border-color:var(--line); color:var(--ink4); cursor:default; }
+  .bshot{ width:100%; border-radius:12px; background:#000; display:block; }
+  .bshotbox{ width:100%; aspect-ratio:16/9; border-radius:12px; background:var(--sunken); display:flex; align-items:center; justify-content:center; }
+  .bslots{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:10px; }
+  .bslot{
+    background:var(--sunken); border:1.5px solid var(--line); border-radius:12px; padding:9px 6px;
+    cursor:pointer; text-align:center; min-height:62px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:4px;
+  }
+  .bslot .who{ font-size:9.5px; color:var(--ink4); }
+  .bslot .leg{ font-family:'Dela Gothic One',sans-serif; font-size:12px; color:var(--ink); line-height:1.3; }
+  .bslot.empty{ border-style:dashed; }
+  .bslot.empty .leg{ color:var(--ink4); font-family:'RocknRoll One',sans-serif; font-size:11px; }
+  .bslot.stranger{ opacity:.5; cursor:default; border-style:dotted; }
+  .bslot.filled{ border-color:var(--purple); }
+  .bbar{
+    position:sticky; bottom:calc(70px + env(safe-area-inset-bottom)); z-index:15;
+    background:var(--ground); padding:10px 18px calc(12px + env(safe-area-inset-bottom));
+    border-top:1px solid rgba(255,255,255,.1);
+  }
+  .toast{
+    position:fixed; left:16px; right:16px; bottom:150px; z-index:50; max-width:398px; margin:0 auto;
+    background:var(--card); border:1.5px solid var(--line); border-radius:16px; padding:14px 15px; font-size:12.5px;
+  }
+  .toast.err{ border-color:var(--red); }
+
+  img.shot{ width:calc(100% - 36px); margin:0 18px; border-radius:14px; background:#000; display:block; }
+  .shotbox{ height:199px; margin:0 18px; border-radius:14px; background:var(--sunken); display:flex; align-items:center; justify-content:center; }
+  label{ display:block; font-size:11px; color:var(--ink3); margin:16px 0 6px; }
+  input[type=text],input[type=password],select,textarea{
+    font-family:'RocknRoll One',sans-serif; font-size:16px; width:100%; padding:12px 13px;
+    border-radius:12px; border:1.5px solid var(--line); background:var(--sunken); color:var(--ink);
+  }
+
+  /* 地色（#241C52）や面（#332A70）と紛れないよう、ベタ塗りにする */
+  .toast{
+    background:var(--lime); border:0; color:var(--invert);
+    font-family:'Dela Gothic One','Hiragino Sans',sans-serif; line-height:1.6;
+    box-shadow:0 10px 30px rgba(0,0,0,.55);
+  }
+  .toast.err{ background:var(--red); color:#FFFFFF; border:0; }
+  .toast .btn, .toast button{
+    background:rgba(36,28,82,.14); border:0; color:var(--invert);
+    font-family:'RocknRoll One',sans-serif;
+  }
+  .toast.err .btn, .toast.err button{ background:rgba(255,255,255,.2); color:#FFFFFF; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <button class="iconbtn" id="back" hidden aria-label="戻る">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C6BCF2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"></path></svg>
+    </button>
+    <div class="ttl" id="title">登録</div>
+    <span class="saving" id="savestate"></span>
+    <button class="iconbtn" id="gear" aria-label="設定">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#A99CE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"></path></svg>
+    </button>
+  </header>
+
+  <main id="app"></main>
+
+  <nav><div class="tabs" id="tabbar"></div></nav>
+</div>
+
+<script>
+// ===================================================================
+// 状態
+// ===================================================================
+const LS = {
+  url: 'apexGasUrl', key: 'apexEditKey', person: 'apexPersonId', last: 'apexLastMatchId'
+};
+
+/**
+ * localStorage が使えない環境（file: や data: URL、プライベートモード）でも落ちないようにする。
+ * ここで例外が出ると読み込み時点で止まり、画面が真っ白になる（実際になった）。
+ * 使えないときはメモリ上に持つ。タブを閉じると消えるが、動きはする。
+ */
+const MEM = {};
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return MEM[k] || null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){ MEM[k] = v; } },
+  del(k){ try { localStorage.removeItem(k); } catch(e){ delete MEM[k]; } },
+  usable(){ try { localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return true; } catch(e){ return false; } }
+};
+
+
+/**
+ * 画面をまたいで結果を覚えておく置き場。
+ * タブを切り替えるたびにGASを待つと毎回2〜3秒かかるので、前回の内容で先に描く。
+ * 中身は数秒後に裏で最新へ差し替わる。
+ */
+const CACHE_PREFIX = 'apexCache:';
+function cacheGet(key){
+  try{
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    return (o && o.data) ? o.data : null;
+  }catch(e){ return null; }
+}
+function cacheSet(key, data){
+  try{ localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), data: data })); }
+  catch(e){ /* 容量超過などは無視。次回また取りに行くだけ */ }
+}
+
+/**
+ * 他の画面ぶんを裏で取っておく。
+ * タブを初めて開くときの2〜3秒を無くすため。いま見ている画面が出てから走らせる。
+ * 取れなかったら黙って諦める（次に開いたときに取りに行くだけ）。
+ */
+function warmOtherScreens(myPersonId){
+  const jobs = [
+    ['home',                       { action:'home' }],
+    ['ranking:month::person',      { action:'ranking', period_kind:'month', period_value:'', axis:'person' }],
+    ['circle:',                    { action:'circle' }],
+    ['mypage:' + (myPersonId||''), myPersonId ? { action:'mypage', person_id:myPersonId } : { action:'mypage' }],
+    ['settings',                   { action:'settings' }],
+    ['masters',                    { action:'masters' }],
+    ['review_list',                { action:'review_list' }]
+  ];
+  let i = 0;
+  const next = () => {
+    if(i >= jobs.length) return;
+    const [key, params] = jobs[i++];
+    // すでに新しい控えがあるなら飛ばす（5分もてば十分）
+    let fresh = false;
+    try{
+      const raw = localStorage.getItem(CACHE_PREFIX + key);
+      if(raw){ const o = JSON.parse(raw); fresh = o && (Date.now() - o.t) < 5 * 60 * 1000; }
+    }catch(e){}
+    if(fresh){ next(); return; }
+    apiGet(params)
+      .then(j => { cacheSet(key, j); })
+      .catch(() => {})
+      .then(() => setTimeout(next, 300));   // 1本ずつ。まとめて叩かない
+  };
+  setTimeout(next, 1200);   // いま見ている画面の描画を邪魔しない
+}
+
+const S = {
+  url: store.get(LS.url) || '',
+  key: store.get(LS.key) || '',
+  personId: store.get(LS.person) || '',
+  masters: null,
+  list: null,
+  detail: null,
+  view: 'list',
+  ack: {},        // 目を通した赤枠（owner.field）。試合を開き直すまで覚える
+  softBad: {},    // 確信度が低い項目。合計の赤と混ざらないように別に持つ
+  bulk: null,     // キャラまとめ修正で読み込んだセッション
+  details: {},    // match_id → 詳細。行き来のたびに取りに行かないための控え
+  images: {},     // file_id → dataURL（先読みしたスクショ）
+  pending: 0      // 送信中の件数
+};
+
+// レジェンドのクラス色。依頼者提供の公式色に合わせる
+const CLASS_COLOR = {
+  assault:'#E2504E', skirmisher:'#D4C247', recon:'#A855F7', support:'#4A8FE0', controller:'#5BBE5B'
+};
+const CLASS_ORDER = ['assault','skirmisher','recon','support','controller'];
+
+const app = document.getElementById('app');
+const titleEl = document.getElementById('title');
+const backEl = document.getElementById('back');
+const gearEl = document.getElementById('gear');
+const saveEl = document.getElementById('savestate');
+
+// ===================================================================
+// 通信（既存の実装から引き継ぎ。実データで動作確認ずみ）
+// ===================================================================
+function apiGet(params){
+  const q = new URLSearchParams(params).toString();
+  return fetch(S.url + '?' + q, { method:'GET' })
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(j => { if(!j.ok) throw new Error(j.error || '取得に失敗しました'); return j; });
+}
+
+/**
+ * 書き込み。編集キーと操作者は毎回ここで足す。
+ * GASのCORS制約により Content-Type は text/plain にする（疎通確認で確定済み）。
+ */
+function apiPost(body){
+  const payload = Object.assign({}, body, { edit_key: S.key, person_id: S.personId });
+  markSaving(1);
+  return fetch(S.url, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    })
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .finally(() => markSaving(-1));
+}
+
+function markSaving(d){
+  S.pending += d;
+  saveEl.textContent = S.pending > 0 ? '保存中…' : '';
+}
+
+// ===================================================================
+// 部品
+// ===================================================================
+function toast(msg, isError, retry){
+  const old = document.getElementById('toast');
+  if(old) old.remove();
+  const t = document.createElement('div');
+  t.id = 'toast';
+  t.className = 'toast' + (isError ? ' err' : '');
+  t.textContent = msg;
+  if(retry){
+    const b = document.createElement('button');
+    b.className = 'btn ghost';
+    b.style.marginTop = '12px';
+    b.textContent = 'もう一度送る';
+    b.onclick = () => { t.remove(); retry(); };
+    t.appendChild(b);
+  }
+  document.body.appendChild(t);
+  if(!isError) setTimeout(() => t.remove(), 2200);
+}
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function nz(v){ return (v === null || v === undefined || v === '') ? '—' : v; }
+function fmtSec(v){
+  if(v === null || v === undefined || v === '') return '—';
+  const n = Number(v); return Math.floor(n/60) + ':' + String(n%60).padStart(2,'0');
+}
+function hhmm(s){ return String(s || '').slice(11,16); }
+
+const TABS = [
+  ['ホーム','<path d="M4 11.4 12 5l8 6.4"></path><path d="M6.4 10.6V19h11.2v-8.4"></path>'],
+  ['ランキング','<path d="M5 20V11"></path><path d="M12 20V4"></path><path d="M19 20v-6"></path>'],
+  ['サークル','<circle cx="5.5" cy="9.6" r="2.4"></circle><circle cx="18.5" cy="9.6" r="2.4"></circle><circle cx="12" cy="8.6" r="3"></circle><path d="M7 19a5 5 0 0 1 10 0"></path><path d="M1.4 17a4.6 4.6 0 0 1 4.4-4.2"></path><path d="M22.6 17a4.6 4.6 0 0 0-4.4-4.2"></path>'],
+  ['マイページ','<circle cx="12" cy="8" r="3.6"></circle><path d="M5 20a7 7 0 0 1 14 0"></path>'],
+  ['登録','<path d="M12 4v11"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M5 19h14"></path>']
+];
+
+/** 下タブ。5画面すべて行き来できる */
+function renderTabs(){
+  const n = (S.list && S.list.counts) ? S.list.counts.pending : 0;
+  document.getElementById('tabbar').innerHTML = TABS.map(([name, icon]) => {
+    const on = name === '登録';
+    const badge = (on && n) ? `<div class="badge">${n}</div>` : '';
+    const iconSvg = `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="${on ? '#241C52' : '#A99CE0'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>`;
+    if(on){
+      return `<button class="tab on" data-tab="${name}">
+        <div class="inner"><div style="position:relative">${iconSvg}${badge}</div><span class="lb">${name}</span></div>
+      </button>`;
+    }
+    return `<button class="tab" data-tab="${name}">${iconSvg}<span class="lb">${name}</span></button>`;
+  }).join('');
+  document.querySelectorAll('#tabbar .tab').forEach(b => {
+    b.onclick = () => {
+      if(b.dataset.tab === '登録'){ renderList(); return; }
+      const to = { 'ホーム':'../home/', 'ランキング':'../ranking/', 'サークル':'../circle/', 'マイページ':'../mypage/' }[b.dataset.tab];
+      if(to){ location.href = to; return; }
+      toast(b.dataset.tab + 'の画面はまだ作っていません');
+    };
+  });
+}
+
+// ===================================================================
+// 設定（URL・編集キー・あなたは誰？）
+// ===================================================================
+function renderSetup(){
+  S.view = 'setup';
+  titleEl.textContent = '設定';
+  backEl.hidden = !S.url;
+  const persons = (S.masters && S.masters.persons) || [];
+  app.innerHTML = `
+    <div class="card" style="margin-top:8px">
+      <div class="sub">この3つはこの端末に保存されます。次回から入力は要りません。</div>
+      ${store.usable() ? '' : '<div class="sub" style="color:var(--red);margin-top:8px">いまの開き方では設定を保存できません（ファイルを直接開いているためです）。公開したURLから開いてください。</div>'}
+
+      <label for="f_url">WebアプリのURL</label>
+      <input id="f_url" type="text" value="${esc(S.url)}" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" spellcheck="false">
+
+      <label for="f_key">編集キー</label>
+      <div style="position:relative">
+        <input id="f_key" type="password" value="${esc(S.key)}" placeholder="32文字のキー"
+               autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="padding-right:64px">
+        <button type="button" id="f_keyeye" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);
+                background:none;border:0;color:var(--ink3);font-family:'RocknRoll One',sans-serif;font-size:11px;
+                padding:8px 10px;cursor:pointer">表示</button>
+      </div>
+      <div class="sub" style="margin-top:6px">直した内容を保存するのに要ります。見るだけなら空でも構いません。<br>
+        保存を押すと、このキーで書き込めるかをその場で確かめます。</div>
+
+      <label for="f_person">あなたは誰？</label>
+      ${persons.length ? `
+      <select id="f_person">
+        <option value="">（選んでください）</option>
+        ${persons.map(p => `<option value="${esc(p.person_id)}" ${p.person_id===S.personId?'selected':''}>${esc(p.display_name)}</option>`).join('')}
+      </select>
+      <div class="sub" style="margin-top:6px">誰が直したかを記録に残すために使います。</div>` : `
+      <div class="card" style="margin:0;padding:13px 14px;background:var(--sunken)">
+        <div class="sub" style="color:var(--ink2)">名前はサーバーから読み込みます。<br>
+        <span style="color:var(--lime)">先に上のURLを入れて「保存する」を押してください。</span>そのあと、ここに4人の名前が出ます。</div>
+      </div>`}
+
+      <button class="btn" id="f_save" style="margin-top:20px">${persons.length ? '保存する' : 'URLを保存して名前を読み込む'}</button>
+    </div>`;
+
+  const eye = document.getElementById('f_keyeye');
+  if(eye) eye.onclick = () => {
+    const k = document.getElementById('f_key');
+    const show = k.type === 'password';
+    k.type = show ? 'text' : 'password';
+    eye.textContent = show ? '隠す' : '表示';
+  };
+
+  document.getElementById('f_save').onclick = async () => {
+    S.url = document.getElementById('f_url').value.trim().replace(/\/+$/,'');
+    S.key = document.getElementById('f_key').value.trim();
+    const pf = document.getElementById('f_person');
+    if (pf) S.personId = pf.value;
+    store.set(LS.url, S.url);
+    store.set(LS.key, S.key);
+    store.set(LS.person, S.personId);
+    if(!S.url){ toast('URLを入力してください', true); return; }
+    const btn = document.getElementById('f_save');
+    if(btn){ btn.disabled = true; btn.textContent = '読み込み中…'; }
+    const first = !S.masters;
+    S.masters = null;
+    await boot();
+
+    // キーが違うと、あとで「保存できませんでした」に出くわすまで気づけない。ここで確かめる
+    if(S.key && S.personId){
+      try{
+        const r = await apiPost({ action:'check_key' });
+        if(!r.ok) throw new Error(r.error || '確認できませんでした');
+        toast('保存しました。編集キーも確認できました');
+      }catch(err){
+        toast('編集キーが違います。書き込みはできません（見るだけなら使えます）', true);
+      }
+      return;
+    }
+    if(first && !S.personId) toast('名前を読み込みました。あなたの名前を選んでください。');
+    else if(S.personId) toast('保存しました。編集キーが空なので、見るだけになります', true);
+  };
+}
+
+// ===================================================================
+// 一覧（カンバス1枚目）
+// ===================================================================
+async function renderList(){
+  S.view = 'list';
+  titleEl.textContent = '登録';
+  backEl.hidden = true;
+
+  if(!S.list) S.list = cacheGet('review_list');
+  if(!S.list){
+    app.innerHTML = '<div class="card" style="margin-top:8px"><div class="sub">読み込み中…</div></div>';
+    try{
+      S.list = await apiGet({ action:'review_list' });
+      cacheSet('review_list', S.list);
+    }catch(e){
+      app.innerHTML = `<div class="card red" style="margin-top:8px">読み込めませんでした。<div class="sub" style="margin-top:6px">${esc(e.message)}</div></div>`;
+      renderTabs();
+      return;
+    }
+  }else{
+    // 手元の控えで先に出す。最新版は裏で受け取る
+    apiGet({ action:'review_list' })
+      .then(j => { S.list = j; cacheSet('review_list', j); if(S.view === 'list') paintList(); })
+      .catch(() => {});
+  }
+
+  paintList();
+}
+
+function paintList(){
+  const c = S.list.counts;
+  const rows = S.list.matches || [];
+  const bad = rows.filter(m => (m.review_codes || []).length > 0 || m.legend_missing);
+  const ok  = rows.filter(m => !((m.review_codes || []).length > 0 || m.legend_missing));
+  const total = bad.length + ok.length + c.confirmed;
+  const now = new Date();
+  const stamp = (now.getMonth()+1) + '/' + now.getDate() + ' ' +
+                String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ' 現在';
+
+  // 上から「やらなければならない順」。看板が傾いているので行ごとに書き出しを右へずらす
+  const board = [
+    ['fix',  '要修正', '修正待ち',      bad.length, 'キル数が合わないなど、直さないと進めないもの', 0],
+    ['chk',  '未確認', '承認だけでOK',  ok.length,  '数字は無事。目を通して承認するだけ',           6],
+    ['done', '確定',   '登録完了',      c.confirmed,'「この試合を確定する」を押しおわったぶん',      12]
+  ].map(([cls, tag, name, val, desc, pad]) => `
+    <div class="krow">
+      <div class="kline" style="padding-left:${pad}px">
+        <div class="ktag ${cls}">${tag}</div>
+        <div class="kname">${name}</div>
+        <div class="kval">${val}</div>
+      </div>
+      <div class="kdesc" style="padding-left:${pad}px">${desc}</div>
+    </div>`).join('');
+
+  app.innerHTML = `
+    <div class="board">
+      <div class="bh">
+        <div class="bt">今日の取り込み</div>
+        <div class="bs">${total} MATCHES</div>
+      </div>
+      ${board}
+      <div class="bfoot"><span class="bs">${stamp}</span></div>
+    </div>
+
+    ${c.not_imported ? `
+    <div class="card" style="margin-top:14px;padding:11px 15px;display:flex;align-items:center;gap:9px">
+      <span style="width:7px;height:7px;border-radius:50%;background:var(--purple);flex:none"></span>
+      <span class="sub" style="color:var(--ink2)">スクショ <span class="mono" style="font-size:12px;color:var(--ink)">${c.not_imported}枚</span> を取り込み中</span>
+    </div>` : '<div style="height:14px"></div>'}
+
+    ${c.failed_in_queue ? `
+    <div class="card red"><div class="spread"><span class="pill red">取り込み失敗 ${c.failed_in_queue}件</span></div>
+      <div class="sub" style="margin-top:8px">リザルト以外のタブや、読めなかった画像です。スプレッドシートの ingest_queue で理由を確認できます。</div></div>` : ''}
+
+    <div id="secBad"></div>
+    <div id="secOk"></div>
+    <div id="secDone"></div>
+  `;
+
+  paintSection('secBad', '先に直すもの', bad, 'bad', 'キル数が合わない試合などを先頭に固定しています。');
+  paintSection('secOk',  'これから見るもの', ok, '', '数字に問題はありません。目を通して承認してください。');
+
+  if(c.confirmed){
+    document.getElementById('secDone').innerHTML =
+      `<div class="sec">確定ずみ <span class="mono" style="font-size:12px;color:var(--ink3)">${c.confirmed}</span></div>
+       <div class="card"><div class="sub">確定した試合はここには出しません。集計に入っています。</div></div>`;
+  }
+  if(rows.length === 0 && !c.not_imported){
+    document.getElementById('secOk').innerHTML =
+      `<div class="card"><div class="dela" style="font-size:15px">全部おわりました</div>
+       <div class="sub" style="margin-top:8px">直すところは1つも残っていません。おつかれさま。</div></div>`;
+  }
+
+  renderTabs();
+  prefetchImages(rows.slice(0, 5).map(m => m.image_ref));
+
+  // キャラだけをまとめて直す入口。1体ずつ開いて選ぶと往復が多すぎるため
+  const bulkBtn = document.createElement('button');
+  const missing = rows.filter(m => m.legend_missing).length;
+  bulkBtn.className = 'btn ' + (missing ? 'limeline' : 'ghost');
+  bulkBtn.style.cssText = 'margin:14px 18px 0;width:calc(100% - 36px)';
+  bulkBtn.textContent = missing
+    ? 'キャラをまとめて直す（' + missing + '試合ぶん残り）'
+    : 'キャラをまとめて直す';
+  bulkBtn.onclick = () => openBulkLegends('');
+  app.appendChild(bulkBtn);
+
+  // 途中で閉じていたら、その試合から再開できるようにする
+  const last = store.get(LS.last);
+  if(last && rows.some(m => m.match_id === last)){
+    const b = document.createElement('button');
+    b.className = 'btn ghost';
+    b.style.cssText = 'width:calc(100% - 36px);margin:0 18px 12px';
+    b.textContent = '前回の続きから';
+    b.onclick = () => openDetail(last);
+    app.insertBefore(b, document.getElementById('secBad'));
+  }
+}
+
+function paintSection(id, title, rows, mod, note){
+  if(!rows.length) return;
+  const host = document.getElementById(id);
+  host.innerHTML = `<div class="sec">${title} <span class="mono" style="font-size:12px;color:${mod==='bad'?'var(--red)':'var(--ink3)'}">${rows.length}</span></div>
+                    <div class="sub" style="margin:-6px 18px 11px">${note}</div>`;
+  rows.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'mrow' + (mod ? ' ' + mod : '');
+    const codes = m.review_codes || [];
+    b.innerHTML = `
+      <div class="spread">
+        <span><span class="mono" style="font-size:13px">${esc(m.session_date)}</span>
+              <span class="sub" style="margin-left:6px">${esc(hhmm(m.captured_at))}</span></span>
+        <span class="sub">${m.seq}戦目</span>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:8px;align-items:baseline">
+        <span class="sub">順位 <span class="mono" style="font-size:16px;color:var(--ink)">${nz(m.squad_place)}</span></span>
+        <span class="sub">部隊キル <span class="mono" style="font-size:16px;color:var(--ink)">${nz(m.squad_total_kills)}</span></span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
+        ${codes.length ? `<span class="pill red">要修正 ${codes.length}</span>` : ''}
+        ${m.legend_missing ? `<span class="pill red">レジェンド未選択 ${m.legend_missing}</span>` : '<span class="pill gray">レジェンド入力ずみ</span>'}
+      </div>
+      ${codes.length ? `<div class="sub" style="margin-top:8px;color:var(--ink2)">${esc(codes[0].detail || codes[0].code)}</div>` : ''}`;
+    b.onclick = () => openDetail(m.match_id);
+    host.appendChild(b);
+  });
+}
+
+/** 一覧を開いた時点で裏で画像を取り始める。タップ時の待ち時間を消すため */
+function prefetchImages(ids){
+  ids.filter(Boolean).forEach(id => {
+    if(S.images[id]) return;
+    S.images[id] = 'loading';
+    apiGet({ action:'image_thumb', file_id:id, w:1600 })
+      .then(r => { S.images[id] = 'data:' + r.mime_type + ';base64,' + r.data_base64; paintImage(id); })
+      .catch(() => { delete S.images[id]; });
+  });
+}
+
+function paintImage(fileId){
+  const src = S.images[fileId];
+  if(!src || src === 'loading') return;
+
+  // 試合の詳細（1枚）
+  const img = document.getElementById('shot');
+  if(img && img.dataset.fileId === fileId){
+    img.src = src; img.hidden = false;
+    const box = document.getElementById('shotbox');
+    if(box) box.hidden = true;
+  }
+
+  // まとめ修正（何枚も並ぶ）。読み込み中の枠を画像に差し替える
+  app.querySelectorAll('.bshotbox[data-file-id="' + fileId + '"]').forEach(box => {
+    const el = document.createElement('img');
+    el.className = 'bshot';
+    el.src = src;
+    el.dataset.fileId = fileId;
+    el.alt = 'リザルト画面';
+    box.replaceWith(el);
+  });
+}
+
+// ===================================================================
+// 試合の詳細（カンバス2〜3枚目）
+// ===================================================================
+async function openDetail(matchId){
+  store.set(LS.last, matchId);
+  S.view = 'detail';
+  titleEl.textContent = '試合の詳細';
+  backEl.hidden = false;
+  S.ack = {};
+
+  // 一度開いた試合は控えから即出す。GASは1往復2〜3秒かかるので、待たせない
+  if(S.details[matchId]){
+    S.detail = S.details[matchId];
+    renderDetail();
+    prefetchNextDetail(matchId);
+    return;
+  }
+
+  app.innerHTML = '<div class="card" style="margin-top:8px"><div class="sub">読み込み中…</div></div>';
+  try{
+    S.detail = await apiGet({ action:'match_detail', match_id:matchId });
+    S.details[matchId] = S.detail;
+  }catch(e){
+    app.innerHTML = `<div class="card red" style="margin-top:8px">読み込めませんでした。<div class="sub" style="margin-top:6px">${esc(e.message)}</div></div>`;
+    return;
+  }
+  renderDetail();
+  prefetchNextDetail(matchId);
+}
+
+/** いま見ている試合の次を、裏で取っておく。「次の試合」を押した瞬間に出せるようにする */
+function prefetchNextDetail(matchId){
+  const rows = (S.list && S.list.matches) || [];
+  const i = rows.findIndex(m => m.match_id === matchId);
+  if(i < 0) return;
+  [rows[i + 1], rows[i - 1]].forEach(m => {
+    if(!m || S.details[m.match_id]) return;
+    apiGet({ action:'match_detail', match_id:m.match_id })
+      .then(j => { S.details[m.match_id] = j; })
+      .catch(() => {});
+  });
+}
+
+function renderDetail(){
+  const m = S.detail.match;
+  const entries = S.detail.entries || [];
+  const accById = {}; (S.masters.accounts || []).forEach(a => accById[a.account_id] = a);
+  const legById = {}; (S.masters.legends || []).forEach(l => legById[l.legend_id] = l);
+  const cached = S.images[m.image_ref];
+  const codes = m.review_codes || [];
+
+  // 赤枠のルール：決める・修正する必要がある箇所。
+  // キル数の合計が合わないときは、どれが誤りか分からないので3人全員のキルを赤にする
+  const killSumBad = !m.kill_sum_ok;
+  // 確信度による赤は、合計が合っても残る種類のもの。別に控えておく
+  S.softBad = {};
+  entries.forEach(e => {
+    const c = e.confidence || {};
+    [['kills','kills'],['assists','assists'],['knocks','knocks'],['damage','damage'],
+     ['survival_sec','survival_time'],['revives','revives'],['respawns','respawns']].forEach(([f, ck]) => {
+      if(low(c[ck])) S.softBad[e.entry_id + '.' + f] = true;
+    });
+  });
+  const missing = entries.filter(e => {
+    const k = (accById[e.account_id] || {}).kind;
+    return k && k !== 'stranger' && !e.legend_id;
+  }).length;
+  const clean = codes.length === 0 && !killSumBad;
+
+  titleEl.textContent = clean ? '試合の詳細' : '試合の詳細';
+
+  app.innerHTML = `
+    <div id="shotbox" class="shotbox"${cached && cached !== 'loading' ? ' hidden' : ''}>
+      <span class="sub">リザルト画面のスクショ</span>
+    </div>
+    <img class="shot" id="shot" data-file-id="${esc(m.image_ref)}"
+         src="${cached && cached !== 'loading' ? cached : ''}"${cached && cached !== 'loading' ? '' : ' hidden'} alt="リザルト画面">
+
+    <div id="reason"></div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <span><span class="mono" style="font-size:13px">${esc(m.session_date)} ${esc(hhmm(m.captured_at))}</span>
+              <span class="sub" style="margin-left:8px">${m.seq}戦目</span></span>
+        <span class="mono" style="font-size:10.5px;color:var(--ink3)">${esc(m.split_id || 'スプリット未特定')}</span>
+      </div>
+      <div class="grid3">
+        ${numField('match','squad_place','順位', m.squad_place, m.squad_place === null || m.squad_place === '', false)}
+        ${numField('match','squad_total_kills','部隊キル', m.squad_total_kills, killSumBad, false)}
+        <div class="fld"><div class="lb">生存</div><div class="ro">${fmtSec(m.squad_survival_sec)}</div></div>
+      </div>
+    </div>
+
+    <div class="sec">3人ぶんの成績</div>
+    <div id="entries"></div>
+
+    <div class="textlink red" id="exclude" style="margin:6px 18px 0">この試合を集計から外す</div>
+
+    <div style="margin:10px 18px 0">
+      <button class="btn limeline" id="applySession">キャラ・撮影者の一括反映</button>
+    </div>
+    <div style="height:14px"></div>
+  `;
+
+  if(codes.length){
+    document.getElementById('reason').innerHTML = `
+      <div class="card red" style="margin-top:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FF5470" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 8v5"></path><path d="M12 16.5v.5"></path><circle cx="12" cy="12" r="9"></circle></svg>
+          <span class="dela" style="font-size:13.5px">${esc(codeTitle(codes[0].code))}</span>
+        </div>
+        ${codes.map(c => `<div class="sub" style="margin-top:7px;color:var(--ink2)">${esc(c.detail || c.code)}</div>`).join('')}
+      </div>`;
+  }
+
+  const box = document.getElementById('entries');
+  entries.forEach(e => {
+    const acc = accById[e.account_id] || {};
+    // accounts に無いIDは野良として扱う。メンバー扱いにするとレジェンド必須になり、
+    // 直しようがないのに確定できなくなる（2026-08-23に古い2試合で起きた）
+    const stranger = acc.kind === 'stranger' || !acc.kind;
+    const who = stranger ? (acc.kind ? '野良' : '野良（未登録）') : (acc.person_name || '（未設定）');
+    const leg = legById[e.legend_id];
+    const conf = e.confidence || {};
+    const slot = e.card_slot === 'center' ? 'まん中・撮った人' : e.card_slot === 'left' ? '左' : '右';
+    const legBad = !stranger && !e.legend_id;
+    const d = document.createElement('div');
+    d.className = 'card';
+    if(e.card_slot === 'center') d.style.borderLeft = '3px solid var(--purple)';
+    d.innerHTML = `
+      <div class="spread" style="align-items:baseline">
+        <div style="display:flex;align-items:baseline;gap:8px;min-width:0">
+          <span class="pill ${e.card_slot === 'center' ? '' : 'gray'}" ${e.card_slot === 'center' ? 'style="background:var(--purple);color:#fff"' : ''}>${slot}</span>
+          <span class="dela" style="font-size:16px">${esc(e.raw_name)}</span>
+        </div>
+        <span class="sub" style="flex:none">${esc(who)}</span>
+      </div>
+
+      <div class="legbox ${legBad ? 'bad' : ''}" data-red="${legBad ? 1 : 0}">
+        <div class="sub" style="color:var(--ink2)">${leg
+          ? 'このレジェンドで登録します'
+          : (stranger ? 'レジェンドは任意です' : 'キャラの絵から決められませんでした。選んでください。')}</div>
+        <button class="btn ghost" data-entry="${esc(e.entry_id)}" data-account="${esc(e.account_id)}"
+                style="margin-top:10px;height:46px;${leg ? 'border-color:'+(CLASS_COLOR[leg.legend_class]||'var(--line)') : ''}">
+          ${leg ? `<span class="dela" style="font-size:14px;color:var(--ink)">${esc(leg.name_ja)}</span>` : 'レジェンドを選ぶ'}
+        </button>
+      </div>
+
+      <div class="grid4">
+        ${numField(e.entry_id,'kills','キル', e.kills, killSumBad || low(conf.kills), !killSumBad)}
+        ${numField(e.entry_id,'assists','アシスト', e.assists, low(conf.assists), true)}
+        ${numField(e.entry_id,'knocks','ノック', e.knocks, low(conf.knocks), true)}
+        ${numField(e.entry_id,'damage','ダメージ', e.damage, low(conf.damage), true)}
+      </div>
+      <div class="grid3">
+        ${numField(e.entry_id,'survival_sec','生存(秒)', e.survival_sec, low(conf.survival_time), true)}
+        ${numField(e.entry_id,'revives','復活', e.revives, low(conf.revives), true)}
+        ${numField(e.entry_id,'respawns','リスポーン', e.respawns, low(conf.respawns), true)}
+      </div>`;
+    box.appendChild(d);
+  });
+
+  // 画面下に貼り付く操作バー
+  const bar = document.createElement('div');
+  bar.className = 'actbar';
+  // 赤枠が残っている間は控えめな見た目。全部片づいたら本来のボタンに戻る（refreshConfirmLook）
+  bar.innerHTML = clean
+    ? `<button class="btn" id="confirm">この試合を確定する</button>`
+    : `<div class="actrow">
+         <button class="btn ghost" id="nextRed" style="border-color:var(--red)">次の赤枠へ
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF5470" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"></path><path d="M12.5 6.5L19 12l-6.5 5.5"></path></svg>
+         </button>
+         <button class="btn" id="confirm">この試合を確定する</button>
+       </div>`;
+  app.appendChild(bar);
+
+  box.querySelectorAll('button[data-entry]').forEach(b => {
+    b.onclick = () => openLegendSheet(b.dataset.entry, b.dataset.account);
+  });
+  app.querySelectorAll('input[data-field]').forEach(bindNumberInput);
+
+  // 「確信度が低い」だけの赤は、触れば消える（直す必要はなく、目を通せばよい）
+  app.querySelectorAll('input[data-soft="1"]').forEach(i => {
+    i.addEventListener('focus', () => {
+      const box = i.closest('.fld');
+      if(!box || box.dataset.red !== '1') return;
+      S.ack[i.dataset.key] = true;
+      if(i.dataset.field === 'kills' || i.dataset.key === 'match.squad_total_kills'){ refreshKillRed(); return; }
+      box.classList.remove('bad'); box.dataset.red = 0;
+      refreshConfirmLook();
+    });
+  });
+  // 辻褄の赤は、実際に合うまで消えない。入力のたびに数え直す
+  app.querySelectorAll('input[data-field="kills"], input[data-key="match.squad_total_kills"]').forEach(i => {
+    i.addEventListener('input', refreshKillRed);
+  });
+  // 順位は埋まれば消える
+  const pl = app.querySelector('input[data-key="match.squad_place"]');
+  if(pl) pl.addEventListener('input', () => {
+    const box = pl.closest('.fld');
+    const bad = pl.value === '';
+    box.classList.toggle('bad', bad); box.dataset.red = bad ? 1 : 0;
+    refreshConfirmLook();
+  });
+  refreshConfirmLook();
+
+  document.getElementById('applySession').onclick = applyPerspectiveToSession;
+  document.getElementById('exclude').onclick = openExcludeSheet;
+  document.getElementById('confirm').onclick = confirmMatch;
+  const nr = document.getElementById('nextRed');
+  if(nr) nr.onclick = jumpToNextRed;
+
+  if(missing){
+    const hint = document.createElement('div');
+    hint.className = 'sub';
+    hint.style.cssText = 'margin:10px 18px 0;text-align:center';
+    hint.textContent = `メンバー${missing}人のレジェンドが未選択です。選ぶと確定できます。`;
+    bar.parentNode.insertBefore(hint, bar);
+  }
+
+  if(cached === 'loading' || !cached) prefetchImages([m.image_ref]);
+  window.scrollTo(0, 0);
+}
+
+function codeTitle(code){
+  return ({
+    KILL_SUM_MISMATCH: 'キル数の合計が合わない',
+    MISSING_REQUIRED_VALUE: '読み取れなかった項目がある',
+    LOW_CONFIDENCE: '読み取りに自信が無い項目がある',
+    PERSPECTIVE_MISMATCH: '撮った人が特定できない',
+    PLAYER_COUNT_ABNORMAL: '人数がおかしい',
+    UNKNOWN_ACCOUNT: '知らないアカウントがいる',
+    SPLIT_UNRESOLVED: 'スプリットが特定できない',
+    CAPTURED_AT_FALLBACK: '撮影時刻が推定'
+  })[code] || '確認が要ります';
+}
+
+/** 赤枠の間を移動する。直す場所を探して上下にスクロールさせないため */
+function jumpToNextRed(){
+  const reds = [...app.querySelectorAll('.fld.bad, .legbox.bad')];
+  if(!reds.length){ toast('赤枠はもうありません'); return; }
+  const y = window.scrollY + 120;
+  const next = reds.find(el => el.getBoundingClientRect().top + window.scrollY > y) || reds[0];
+  window.scrollTo({ top: next.getBoundingClientRect().top + window.scrollY - 110, behavior:'smooth' });
+}
+
+function low(c){ return typeof c === 'number' && c < 0.85; }
+
+/**
+ * soft=true は「確信度が低いので目を通してほしい」だけの赤。触れば消える。
+ * soft=false は「直さないと辻褄が合わない」赤。実際に直るまで消えない。
+ */
+function numField(owner, field, label, value, isBad, soft){
+  const key = owner + '.' + field;
+  const bad = isBad && !(soft && S.ack[key]);
+  return `<div class="fld ${bad ? 'bad' : ''}" data-red="${bad ? 1 : 0}">
+    <div class="lb">${label}</div>
+    <input data-owner="${esc(owner)}" data-field="${esc(field)}" data-key="${key}" data-soft="${soft ? 1 : 0}"
+      type="number" inputmode="numeric"
+      value="${value === null || value === undefined ? '' : value}">
+  </div>`;
+}
+
+/** いま画面に残っている赤枠の数。0になったら確定ボタンを本気の見た目にする */
+function redLeft(){
+  return app.querySelectorAll('[data-red="1"]').length;
+}
+
+function refreshConfirmLook(){
+  const btn = document.getElementById('confirm');
+  if(!btn) return;
+  const n = redLeft();
+  btn.classList.toggle('wait', n > 0);
+  btn.textContent = n > 0 ? ('残り' + n + 'か所を見てから確定') : 'この試合を確定する';
+  const nr = document.getElementById('nextRed');
+  if(nr) nr.style.display = n > 0 ? '' : 'none';
+}
+
+/** キル合計の辻褄を、入力中の値でその場で数え直す */
+function killSumState(){
+  const t = app.querySelector('input[data-key="match.squad_total_kills"]');
+  const total = t && t.value !== '' ? Number(t.value) : null;
+  let sum = 0, known = true;
+  app.querySelectorAll('input[data-field="kills"]').forEach(i => {
+    if(i.value === ''){ known = false; return; }
+    sum += Number(i.value);
+  });
+  return { ok: known && total !== null && sum === total, sum: sum, total: total };
+}
+
+/** キル関係の赤枠を、いまの入力に合わせて付け外しする */
+function refreshKillRed(){
+  const st = killSumState();
+  app.querySelectorAll('input[data-field="kills"], input[data-key="match.squad_total_kills"]').forEach(i => {
+    const box = i.closest('.fld');
+    if(!box) return;
+    // 確信度による赤は別管理なので、合計が合っていてもそちらが残ることがある
+    const soft = i.dataset.soft === '1' && !S.ack[i.dataset.key] && S.softBad[i.dataset.key];
+    const bad = !st.ok || soft;
+    box.classList.toggle('bad', bad);
+    box.dataset.red = bad ? 1 : 0;
+  });
+  refreshConfirmLook();
+}
+
+/** 1項目直したらすぐ送る。まとめて送らないので、切れても失うのは最後の1項目だけ */
+function bindNumberInput(input){
+  input.dataset.original = input.value;
+  input.onchange = () => {
+    const owner = input.dataset.owner;
+    const field = input.dataset.field;
+    const value = input.value === '' ? '' : Number(input.value);
+    const body = owner === 'match'
+      ? { action:'update_match', match_id:S.detail.match.match_id, fields:{ [field]: value } }
+      : { action:'update_entry', entry_id:owner, fields:{ [field]: value } };
+
+    // 手元の値も更新しておく。取り直すと2〜3秒止まるので、返ってきた再計算値だけ当てる
+    if(owner === 'match') S.detail.match[field] = value;
+    else {
+      const e = (S.detail.entries || []).filter(function(x){ return x.entry_id === owner; })[0];
+      if(e) e[field] = value;
+    }
+
+    apiPost(body).then(r => {
+      if(!r.ok){ throw new Error(r.error || '保存できませんでした'); }
+      input.dataset.original = input.value;
+      if(r.recalculated){
+        S.detail.match.kill_sum_ok = r.recalculated.kill_sum_ok;
+        S.detail.match.squad_survival_sec = r.recalculated.squad_survival_sec;
+      }
+    }).catch(err => {
+      toast('保存できませんでした：' + err.message, true, () => input.onchange());
+    });
+  };
+}
+
+// ===================================================================
+// レジェンド選択（カンバス4枚目）
+// ===================================================================
+function openLegendSheet(entryId, accountId, onPick){
+  const recent = (S.masters.recent_legends || {})[accountId] || [];
+  const legends = S.masters.legends || [];
+  const byId = {}; legends.forEach(l => byId[l.legend_id] = l);
+  const clsName = {};
+  (S.masters.legend_classes || []).forEach(c => clsName[c.id] = c.name_ja);
+
+  const big = recent.slice(0, 3).map(id => byId[id]).filter(Boolean);
+
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  sheet.innerHTML = `
+    <div class="sheetinner">
+      <div class="spread">
+        <span class="dela" style="font-size:17px">レジェンドを選ぶ</span>
+        <button class="btn ghost" style="width:auto;height:40px;padding:0 16px" id="lclose">閉じる</button>
+      </div>
+
+      ${big.length ? `
+        <div class="sub" style="margin-top:14px">よく使う3体</div>
+        <div class="big3">${big.map(l =>
+          `<button data-legend="${esc(l.legend_id)}" style="border-left-color:${CLASS_COLOR[l.legend_class] || 'var(--line)'}">${esc(l.name_ja)}</button>`
+        ).join('')}</div>` : ''}
+
+      ${CLASS_ORDER.filter(cid => legends.some(l => l.legend_class === cid)).map(cid => `
+        <div class="clsline"><span class="dot" style="background:${CLASS_COLOR[cid]}"></span>${esc(clsName[cid] || cid)}</div>
+        <div class="lgrid">${legends.filter(l => l.legend_class === cid).map(l =>
+          `<button data-legend="${esc(l.legend_id)}" style="border-left-color:${CLASS_COLOR[cid]}">${esc(l.name_ja)}</button>`
+        ).join('')}</div>
+      `).join('')}
+
+      <button class="btn ghost" id="lclear">レジェンド不明のままにする</button>
+    </div>`;
+  document.body.appendChild(sheet);
+
+  const close = () => sheet.remove();
+  sheet.querySelector('#lclose').onclick = close;
+  sheet.onclick = ev => { if(ev.target === sheet) close(); };
+  // 呼び出し元が受け取り方を決める。試合の詳細では即保存、まとめ修正では手元に貯める
+  const pick = onPick || (id => setLegend(entryId, id));
+  sheet.querySelector('#lclear').onclick = () => { pick(''); close(); };
+  sheet.querySelectorAll('[data-legend]').forEach(b => {
+    b.onclick = () => { pick(b.dataset.legend); close(); };
+  });
+}
+
+function setLegend(entryId, legendId){
+  const entry = (S.detail.entries || []).filter(function(e){ return e.entry_id === entryId; })[0];
+  if(!entry) return;
+  const before = entry.legend_id;
+
+  // 先に画面へ反映する。GASの返事を待つと1回あたり4〜5秒かかり、選ぶ作業にならない
+  entry.legend_id = legendId;
+  renderDetail();
+
+  apiPost({ action:'update_entry', entry_id:entryId, fields:{ legend_id:legendId } })
+    .then(r => {
+      if(!r.ok) throw new Error(r.error || '保存できませんでした');
+    })
+    .catch(err => {
+      entry.legend_id = before;   // 送れなかったので画面も戻す
+      renderDetail();
+      toast('保存できませんでした：' + err.message, true, () => setLegend(entryId, legendId));
+    });
+}
+
+// ===================================================================
+// 確定・除外・一括反映
+// ===================================================================
+function confirmMatch(){
+  const btn = document.getElementById('confirm');
+  btn.disabled = true;
+  apiPost({ action:'confirm_match', match_id:S.detail.match.match_id })
+    .then(r => {
+      btn.disabled = false;
+      if(!r.ok){
+        if(r.code === 'LEGEND_REQUIRED'){ toast(r.error, true); return; }
+        throw new Error(r.error || '確定できませんでした');
+      }
+      toast(r.already ? 'すでに確定ずみです' : '確定しました');
+      store.del(LS.last);
+      // 取り直すと1.4秒止まる。確定したことは分かっているので手元で反映する
+      const mid = S.detail.match.match_id;
+      if(S.list){
+        S.list.matches = (S.list.matches || []).filter(m => m.match_id !== mid);
+        if(S.list.counts){
+          S.list.counts.pending = Math.max(0, (S.list.counts.pending || 0) - 1);
+          S.list.counts.confirmed = (S.list.counts.confirmed || 0) + 1;
+        }
+      }
+      delete S.details[mid];
+      renderList();
+    })
+    .catch(err => { btn.disabled = false; toast('確定できませんでした：' + err.message, true, confirmMatch); });
+}
+
+/** レジェンドと撮影者だけをその日の全試合へ。キル数やダメージは試合ごとに違うので含めない */
+function applyPerspectiveToSession(){
+  const accId = S.detail.match.perspective_account_id;
+  if(!accId){ toast('撮った人が未設定です', true); return; }
+  apiPost({ action:'apply_perspective_to_session', session_id:S.detail.match.session_id, account_id:accId })
+    .then(r => {
+      if(!r.ok) throw new Error(r.error);
+      toast(r.changed + '試合に反映しました');
+    })
+    .catch(err => toast('反映できませんでした：' + err.message, true, applyPerspectiveToSession));
+}
+
+function openExcludeSheet(){
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  sheet.innerHTML = `
+    <div class="sheetinner">
+      <span class="dela" style="font-size:17px">この試合を集計から外す</span>
+      <div class="sub" style="margin-top:10px">誤って取り込んだときや、他人のスクショが混ざったときに使います。データは消えません。</div>
+      <label for="exreason">理由（必須）</label>
+      <textarea id="exreason" rows="2" placeholder="例：他人のスクショだった"></textarea>
+      <button class="btn redline" id="exgo" style="margin-top:16px;height:52px">外す</button>
+      <button class="btn ghost" id="excancel" style="margin-top:9px">やめる</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  sheet.querySelector('#excancel').onclick = close;
+  sheet.onclick = ev => { if(ev.target === sheet) close(); };
+  sheet.querySelector('#exgo').onclick = () => {
+    const reason = sheet.querySelector('#exreason').value.trim();
+    if(!reason){ toast('理由を入力してください', true); return; }
+    apiPost({ action:'exclude_match', match_id:S.detail.match.match_id, reason })
+      .then(r => {
+        if(!r.ok) throw new Error(r.error);
+        close(); toast('外しました'); store.del(LS.last); renderList();
+      })
+      .catch(err => toast('外せませんでした：' + err.message, true));
+  };
+}
+
+
+// ===================================================================
+// キャラをまとめて直す
+//
+// 1体ずつ保存すると1回2〜3秒の往復が体数ぶん要る（10試合で30往復）。
+// ここでは手元に貯めるだけにして、最後の「一括反映」で1往復だけ送る。
+// 埋める順は上から。2件目以降は「上と同じ構成にする」で3枠まとめて写せる。
+// ===================================================================
+async function openBulkLegends(sessionId){
+  S.view = 'bulk';
+  titleEl.textContent = 'キャラをまとめて直す';
+  backEl.hidden = false;
+  app.innerHTML = '<div class="card" style="margin-top:8px"><div class="sub">読み込み中…</div></div>';
+
+  try{
+    S.bulk = await apiGet(sessionId ? { action:'session_legends', session_id:sessionId }
+                                    : { action:'session_legends' });
+  }catch(e){
+    app.innerHTML = `<div class="card red" style="margin-top:8px">読み込めませんでした。
+      <div class="sub" style="margin-top:6px">${esc(e.message)}</div></div>`;
+    return;
+  }
+
+  // 手元の下書き。いまシートに入っている値を初期値にする（空欄は空欄のまま）
+  S.draft = {};
+  S.bulk.matches.forEach(m => m.entries.forEach(e => { S.draft[e.entry_id] = e.legend_id || ''; }));
+  renderBulk();
+  prefetchImages(S.bulk.matches.map(m => m.image_ref));
+}
+
+/** メンバーぶんの枠がいくつ埋まっているか。野良は数えない */
+function bulkCounts(){
+  let need = 0, done = 0;
+  S.bulk.matches.forEach(m => m.entries.forEach(e => {
+    if(e.is_stranger) return;
+    need++;
+    if(S.draft[e.entry_id]) done++;
+  }));
+  return { need, done };
+}
+
+/** その試合のメンバー枠が全部埋まっているか。「上と同じ構成」を押せるかの判定に使う */
+function matchFilled(m){
+  return m.entries.filter(e => !e.is_stranger).every(e => !!S.draft[e.entry_id]);
+}
+
+function renderBulk(){
+  const legById = {}; (S.masters.legends || []).forEach(l => legById[l.legend_id] = l);
+  const c = bulkCounts();
+
+  const body = S.bulk.matches.map((m, i) => {
+    const prev = S.bulk.matches[i - 1];
+    const canSame = !!prev && matchFilled(prev);
+    const cached = S.images[m.image_ref];
+
+    const slots = m.entries.map(e => {
+      const id = S.draft[e.entry_id] || '';
+      const leg = legById[id];
+      const who = e.is_stranger ? '野良' : (e.person_name || e.raw_name);
+      if(e.is_stranger){
+        return `<div class="bslot stranger"><div class="who">${esc(who)}</div>
+          <div class="leg">対象外</div></div>`;
+      }
+      const cls = id ? 'bslot filled' : 'bslot empty';
+      const color = leg ? (CLASS_COLOR[leg.legend_class] || '') : '';
+      return `<div class="${cls}" data-slot="${esc(e.entry_id)}" data-acc="${esc(e.account_id)}"
+                   ${color ? 'style="border-color:'+color+'"' : ''}>
+        <div class="who">${esc(who)}</div>
+        <div class="leg">${leg ? esc(leg.name_ja) : '選ぶ'}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="bmatch">
+      <div class="bh">
+        <span class="bseq">${m.seq}戦目</span>
+        <span class="bpl">${m.squad_place === null ? '順位なし' : m.squad_place + '位'}</span>
+        ${i > 0 ? `<button class="bsame" data-same="${i}" ${canSame ? '' : 'disabled'}>上と同じ構成にする</button>` : ''}
+      </div>
+      ${cached && cached !== 'loading'
+        ? `<img class="bshot" src="${cached}" data-file-id="${esc(m.image_ref)}" alt="リザルト画面">`
+        : `<div class="bshotbox" data-file-id="${esc(m.image_ref)}"><span class="sub">スクショ読み込み中…</span></div>`}
+      <div class="bslots">${slots}</div>
+    </div>`;
+  }).join('');
+
+  app.innerHTML =
+    `<div class="bhead">
+       <span class="sub">上から順に、スクショを見ながら選びます</span>
+       <span class="cnt">${c.done} / ${c.need}</span>
+     </div>` +
+    body +
+    `<div class="bbar">
+       <button class="btn" id="bulkGo" ${c.done === 0 ? 'disabled' : ''}>
+         ${c.done === c.need ? `一括反映（${c.need}枠 / ${S.bulk.matches.length}試合）`
+                             : `一括反映（${c.done}枠ぶんだけ・残り${c.need - c.done}）`}
+       </button>
+     </div>`;
+
+  app.querySelectorAll('[data-slot]').forEach(el => {
+    el.onclick = () => openLegendSheet(el.dataset.slot, el.dataset.acc, id => {
+      S.draft[el.dataset.slot] = id;
+      renderBulk();
+    });
+  });
+  app.querySelectorAll('[data-same]').forEach(b => {
+    b.onclick = () => {
+      const i = Number(b.dataset.same);
+      const prev = S.bulk.matches[i - 1], cur = S.bulk.matches[i];
+      // 席（左・中央・右）ごとに写す。人が入れ替わっていても席の並びは同じ
+      prev.entries.forEach(pe => {
+        const ce = cur.entries.filter(x => x.card_slot === pe.card_slot)[0];
+        if(!ce || ce.is_stranger) return;
+        S.draft[ce.entry_id] = S.draft[pe.entry_id] || '';
+      });
+      renderBulk();
+    };
+  });
+  const go = document.getElementById('bulkGo');
+  if(go) go.onclick = sendBulkLegends;
+}
+
+function sendBulkLegends(){
+  if(!S.key){ toast('編集キーが要ります。登録タブの設定で入れてください', true); return; }
+  const items = [];
+  S.bulk.matches.forEach(m => m.entries.forEach(e => {
+    if(e.is_stranger) return;
+    const id = S.draft[e.entry_id] || '';
+    if(id && id !== e.legend_id) items.push({ entry_id: e.entry_id, legend_id: id });
+  }));
+  if(!items.length){ toast('変わったところがありません'); return; }
+
+  const btn = document.getElementById('bulkGo');
+  if(btn){ btn.disabled = true; btn.textContent = '送っています…'; }
+
+  apiPost({ action:'bulk_update_legends', items })
+    .then(r => {
+      if(!r.ok) throw new Error(r.error || '反映できませんでした');
+      toast(r.changed + '枠を反映しました');
+      // 送った内容を手元にも反映して、押し直しても二重に送らないようにする
+      S.bulk.matches.forEach(m => m.entries.forEach(e => { e.legend_id = S.draft[e.entry_id] || ''; }));
+      S.list = null; S.details = {};
+      renderBulk();
+    })
+    .catch(err => {
+      if(btn) btn.disabled = false;
+      renderBulk();
+      toast('反映できませんでした：' + err.message, true, sendBulkLegends);
+    });
+}
+
+// ===================================================================
+// 起動
+// ===================================================================
+async function boot(){
+  renderTabs();
+  if(!S.url){ renderSetup(); return; }
+  // ?match=… で来たら、その試合を直接開く（確定ずみでも開ける）
+  const want = new URLSearchParams(location.search).get('match');
+
+  // 人・アカウント・レジェンドの一覧はめったに変わらない。控えがあれば待たずに進む
+  const cachedMasters = cacheGet('masters');
+  if(cachedMasters){
+    S.masters = cachedMasters;
+    apiGet({ action:'masters' })
+      .then(j => { S.masters = j; cacheSet('masters', j); })
+      .catch(() => {});
+  }else{
+    app.innerHTML = `<div class="card" style="margin-top:8px">
+        <div class="dela" style="font-size:15px">サーバーに聞いています…</div>
+        <div class="sub" style="margin-top:8px">数秒かかります。そのままお待ちください。</div>
+      </div>`;
+    try{
+      S.masters = await apiGet({ action:'masters' });
+      cacheSet('masters', S.masters);
+    }catch(e){
+      app.innerHTML = `<div class="card red" style="margin-top:8px">サーバーに繋がりません。設定を確認してください。
+        <div class="sub" style="margin-top:6px">${esc(e.message)}</div></div>`;
+      return;
+    }
+  }
+  if(!S.personId){ renderSetup(); return; }
+  if(want){ await openDetail(want); warmOtherScreens(S.personId); return; }
+  await renderList();
+  warmOtherScreens(S.personId);
+}
+
+backEl.onclick = () => { S.bulk = null; renderList(); };
+gearEl.onclick = () => renderSetup();
+
+boot();
+</script>
+
+<script>
+// ホーム画面のアイコンから開けるようにする。電波が悪くても画面自体は出る。
+// 数字の控えは画面側（localStorage）が持っているので、ここでは触らない。
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(function () {
+      // 登録できなくてもアプリは普通に動く。file:// で開いたときなど
+    });
+  });
+}
+</script>
+</body>
+</html>

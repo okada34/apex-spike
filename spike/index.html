@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>疎通確認｜Apexサークル戦績</title>
+<style>
+  :root{ --bg:#241C52; --card:#332A70; --line:#493D96; --accent:#7C5CFF;
+         --ok:#4ADE80; --ng:#FF5470; --txt:#fff; --sub:#C6BCF2; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; padding:18px; background:var(--bg); color:var(--txt);
+        font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:14px; line-height:1.6; }
+  h1{ font-size:17px; margin:0 0 4px; }
+  p.lead{ color:var(--sub); font-size:12px; margin:0 0 16px; }
+  label{ display:block; font-size:12px; color:var(--sub); margin:14px 0 4px; }
+  input[type=text]{ width:100%; padding:10px; border-radius:10px; border:1px solid var(--line);
+        background:#1c1640; color:var(--txt); font-size:13px; font-family:ui-monospace,monospace; }
+  button{ width:100%; margin-top:12px; padding:14px; border-radius:12px; border:0;
+        background:var(--accent); color:#fff; font-size:15px; font-weight:700; }
+  button:disabled{ opacity:.5; }
+  .test{ background:var(--card); border-radius:14px; padding:13px 15px; margin-top:10px; }
+  .test h2{ font-size:13px; margin:0 0 2px; display:flex; justify-content:space-between; align-items:center; }
+  .badge{ font-size:11px; padding:2px 9px; border-radius:20px; background:var(--line); color:var(--sub); }
+  .badge.ok{ background:var(--ok); color:#08301a; }
+  .badge.ng{ background:var(--ng); color:#fff; }
+  .detail{ font-size:11.5px; color:var(--sub); white-space:pre-wrap; word-break:break-all; margin-top:6px;
+        font-family:ui-monospace,monospace; }
+  canvas{ margin-top:8px; border:1px solid var(--line); border-radius:6px; background:#000;
+        image-rendering:pixelated; }
+  .row{ display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+  .note{ font-size:11.5px; color:var(--sub); margin-top:16px; padding-top:12px; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+
+<h1>疎通確認</h1>
+<p class="lead">GitHub Pages から GAS を呼び、非公開Driveの画像を取り出して画素を読めるかを確かめます。ここが通らないとレジェンド自動判別（phash）が成立しません。</p>
+
+<label for="url">WebアプリのURL（GASの <code>showWebAppUrl</code> で取得）</label>
+<input type="text" id="url" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off" spellcheck="false">
+
+<button id="run">テストを実行</button>
+
+<div id="tests"></div>
+
+<p class="note">
+テスト4が成功すれば、<b>ブラウザ側でキャラアートの指紋を計算できる</b>ことが確認できます。<br>
+テスト3が失敗する場合、GASのCORS制約（POSTで独自ヘッダーやJSON形式を使うとプリフライトで弾かれる）に該当している可能性があります。
+</p>
+
+<script>
+const TESTS = [
+  { id:'ping',    title:'1. 疎通（GET）',            desc:'GASに到達できるか' },
+  { id:'summary', title:'2. シート読み取り（GET）',   desc:'スプレッドシートの件数を取得できるか' },
+  { id:'post',    title:'3. 送信（POST）',           desc:'CORSのプリフライトに阻まれないか' },
+  { id:'image',   title:'4. 画像取得と画素読み取り',  desc:'非公開Drive画像をcanvasに描いて指紋を計算できるか' },
+];
+
+const box = document.getElementById('tests');
+const els = {};
+TESTS.forEach(t => {
+  const d = document.createElement('div');
+  d.className = 'test';
+  d.innerHTML = `<h2><span>${t.title}</span><span class="badge" id="b-${t.id}">未実行</span></h2>
+                 <div class="detail" id="d-${t.id}">${t.desc}</div>`;
+  box.appendChild(d);
+  els[t.id] = { badge: d.querySelector(`#b-${t.id}`), detail: d.querySelector(`#d-${t.id}`) };
+});
+
+function mark(id, ok, text){
+  const e = els[id];
+  e.badge.textContent = ok ? 'OK' : 'NG';
+  e.badge.className = 'badge ' + (ok ? 'ok' : 'ng');
+  e.detail.textContent = text;
+}
+function busy(id){
+  els[id].badge.textContent = '実行中';
+  els[id].badge.className = 'badge';
+}
+
+const urlInput = document.getElementById('url');
+const base = () => urlInput.value.trim().replace(/\/+$/,'');
+
+// スマホで長いURLを打ち直さずに済むよう、この端末に覚えさせておく
+urlInput.value = localStorage.getItem('gasUrl') || '';
+urlInput.addEventListener('change', () => localStorage.setItem('gasUrl', urlInput.value.trim()));
+
+async function getJson(params){
+  const q = new URLSearchParams(params).toString();
+  const res = await fetch(base() + '?' + q, { method:'GET' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+document.getElementById('run').addEventListener('click', async () => {
+  if (!base().startsWith('https://')) { alert('WebアプリのURLを入力してください'); return; }
+  const btn = document.getElementById('run');
+  btn.disabled = true;
+  let sampleFileId = '';
+
+  // 1. ping
+  busy('ping');
+  try {
+    const t0 = performance.now();
+    const r = await getJson({ action:'ping' });
+    const ms = Math.round(performance.now() - t0);
+    mark('ping', r.ok === true, `version: ${r.version}\nサーバー時刻: ${r.server_time}\n往復: ${ms}ms`);
+  } catch (e) { mark('ping', false, String(e)); }
+
+  // 2. summary
+  busy('summary');
+  try {
+    const t0 = performance.now();
+    const r = await getJson({ action:'summary' });
+    const ms = Math.round(performance.now() - t0);
+    if (!r.ok) throw new Error(r.error);
+    sampleFileId = (r.sample_image && r.sample_image.file_id) || '';
+    const c = r.counts;
+    mark('summary', true,
+      `試合 ${c.matches} / 出場記録 ${c.entries} / セッション ${c.sessions}\n` +
+      `人 ${c.persons} / アカウント ${c.accounts} / レジェンド ${c.legends}\n` +
+      `キュー ${c.ingest_queue}件\n往復: ${ms}ms\n` +
+      `画像サンプル: ${r.sample_image.file_name || '(なし)'}`);
+  } catch (e) { mark('summary', false, String(e)); }
+
+  // 3. POST（text/plain でプリフライトを回避）
+  busy('post');
+  try {
+    const t0 = performance.now();
+    const res = await fetch(base(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action:'echo', hello:'apex', at: new Date().toISOString() })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const r = await res.json();
+    const ms = Math.round(performance.now() - t0);
+    if (!r.ok) throw new Error(r.error);
+    mark('post', true, `送った値が返ってきました: ${JSON.stringify(r.received)}\n往復: ${ms}ms`);
+  } catch (e) { mark('post', false, String(e) + '\nCORSで弾かれている可能性があります'); }
+
+  // 4. 画像取得 → canvas → 画素 → 簡易ハッシュ
+  busy('image');
+  try {
+    if (!sampleFileId) throw new Error('キューに画像がありません。先に scanDriveFolder を実行してください');
+
+    const t0 = performance.now();
+    const r = await getJson({ action:'image', file_id: sampleFileId });
+    if (!r.ok) throw new Error(r.error);
+    const fetchMs = Math.round(performance.now() - t0);
+
+    const img = new Image();
+    const loaded = new Promise((ok, ng) => { img.onload = ok; img.onerror = () => ng(new Error('画像を読み込めません')); });
+    img.src = `data:${r.mime_type};base64,${r.data_base64}`;
+    await loaded;
+
+    // 左カードのキャラアート付近を仮に切り出す（座標は後で実測して確定する）
+    const cw = img.naturalWidth, ch = img.naturalHeight;
+    const crop = { x: Math.round(cw*0.20), y: Math.round(ch*0.62), w: Math.round(cw*0.10), h: Math.round(ch*0.22) };
+
+    const N = 16;
+    const cv = document.createElement('canvas');
+    cv.width = N; cv.height = N;
+    const ctx = cv.getContext('2d', { willReadFrequently:true });
+    ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, N, N);
+
+    // ここが本命：data: URI 由来なので canvas は汚染されず画素を読める
+    const px = ctx.getImageData(0, 0, N, N).data;
+
+    const gray = [];
+    for (let i = 0; i < px.length; i += 4) {
+      gray.push(0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2]);
+    }
+    const avg = gray.reduce((a,b)=>a+b,0) / gray.length;
+    let bits = '';
+    for (const g of gray) bits += (g > avg ? '1' : '0');
+    let hex = '';
+    for (let i = 0; i < bits.length; i += 4) hex += parseInt(bits.slice(i,i+4),2).toString(16);
+
+    const totalMs = Math.round(performance.now() - t0);
+
+    // 目視確認用に切り出しを大きく描く（再実行時は前回の分を消す）
+    const old = document.getElementById('preview');
+    if (old) old.remove();
+    const prev = document.createElement('canvas');
+    prev.id = 'preview';
+    prev.width = 120; prev.height = 120;
+    prev.getContext('2d').drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, 120, 120);
+    els.image.detail.after(prev);
+
+    mark('image', true,
+      `${r.file_name}\n` +
+      `画像サイズ: ${(r.size_bytes/1024/1024).toFixed(2)}MB / ${cw}x${ch}\n` +
+      `取得: ${fetchMs}ms  合計: ${totalMs}ms\n` +
+      `切り出し: x${crop.x} y${crop.y} ${crop.w}x${crop.h}（仮の座標）\n` +
+      `画素の読み取り: 成功（canvasは汚染されていません）\n` +
+      `簡易ハッシュ(${N*N}bit / ${N}x${N}): ${hex}`);
+  } catch (e) { mark('image', false, String(e)); }
+
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>

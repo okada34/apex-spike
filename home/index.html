@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ホーム｜Apexサークル戦績</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#241C52">
+<link rel="icon" type="image/png" sizes="64x64" href="../icons/favicon-64.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="サークル戦績">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=RocknRoll+One&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#241C52; --card:#332A70; --sunken:#2E2559; --line:#493D96; --dim:#3B3178;
+    --purple:#7C5CFF; --yellow:#FFE646; --lime:#C8FF00; --red:#FF5470;
+    --ink:#FFFFFF; --ink2:#C6BCF2; --ink3:#A99CE0; --ink4:#8478C4; --invert:#241C52;
+    --limeDark:#9CC700;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; padding:0; background:var(--ground); color:var(--ink);
+    font-family:'RocknRoll One','Hiragino Sans','Yu Gothic',sans-serif;
+    font-size:14px; line-height:1.7; overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .dela{ font-family:'Dela Gothic One','Hiragino Sans',sans-serif; font-weight:400; }
+  .rr{ font-family:'RocknRoll One','Hiragino Sans',sans-serif; font-weight:400; }
+  .mono{ font-family:'Roboto Mono',ui-monospace,monospace; font-weight:700; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+
+  .wrap{ max-width:430px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;
+         padding-bottom:calc(70px + env(safe-area-inset-bottom)); }
+  main{ flex:1; padding-bottom:14px; }
+
+  /* ---- ヘッダー ---- */
+  header{
+    position:sticky; top:0; z-index:20; background:var(--ground);
+    padding:16px 18px 10px; display:flex; align-items:center; gap:11px;
+  }
+  header .ttl{ font-family:'Dela Gothic One',sans-serif; font-size:17px; }
+  .gear{
+    margin-left:auto; width:30px; height:30px; border-radius:20px; background:var(--card);
+    border:0; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+
+  /* ---- 未確認バナー（赤）---- */
+  .alert{
+    margin:4px 18px 0; background:var(--red); border-radius:14px; padding:13px 15px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    border:0; width:calc(100% - 36px); text-align:left; cursor:pointer; color:#fff;
+    font-family:'RocknRoll One',sans-serif; font-size:13px; line-height:1.7;
+  }
+
+  /* ---- 黄の看板 ---- */
+  .board{
+    margin:16px 18px 0; background:var(--yellow); border-radius:18px;
+    padding:18px 18px 8px; transform:rotate(-1.4deg);
+  }
+  .board .bh{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+  .board .bt{ font-family:'Dela Gothic One',sans-serif; font-size:22px; color:var(--invert); }
+  .board .bs{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:10px; color:rgba(36,28,82,.6); letter-spacing:-.04em; }
+  .krow{ padding:14px 0; border-bottom:2px solid rgba(36,28,82,.14); }
+  .krow.tap{ cursor:pointer; }
+  .kline{ display:flex; align-items:center; gap:10px; }
+  .ktag{ font-size:10px; background:var(--invert); color:var(--yellow); padding:3px 8px; border-radius:20px; flex:none; }
+  .kname{ font-family:'Dela Gothic One',sans-serif; font-size:20px; color:var(--invert); }
+  .kval{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:24px; color:var(--invert); letter-spacing:-.04em; margin-left:auto; }
+  .kdesc{ font-size:11px; color:rgba(36,28,82,.72); margin-top:6px; line-height:1.6; }
+  .bfoot{ display:flex; justify-content:flex-end; padding:8px 0 2px; }
+  .bfoot span{ font-size:9.5px; color:rgba(36,28,82,.55); }
+
+  /* ---- カード・見出し ---- */
+  .card{ background:var(--card); border-radius:18px; padding:15px; margin:0 18px 10px; }
+  .sec{ font-family:'Dela Gothic One',sans-serif; font-size:15px; margin:24px 18px 10px; }
+  .sechead{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:24px 18px 10px; }
+  .sechead .t{ font-family:'Dela Gothic One',sans-serif; font-size:15px; }
+  .sechead .n{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:11px; color:var(--ink2); letter-spacing:-.04em; }
+  .sub{ font-size:11px; line-height:1.7; color:var(--ink3); }
+
+  /* ---- 試合の行 ---- */
+  .mrow{
+    background:var(--card); border-radius:14px; padding:12px 14px; margin:0 18px 8px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .mrow.tap{ cursor:pointer; }
+  .mrow .seq{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:11px; color:var(--ink4); letter-spacing:-.04em; flex:none; width:26px; }
+  .mrow .place{ font-family:'Dela Gothic One',sans-serif; font-size:19px; flex:none; min-width:52px; }
+  .mrow .place small{ font-family:'RocknRoll One',sans-serif; font-size:11px; color:var(--ink3); margin-left:1px; }
+  .mrow .st{ margin-left:auto; text-align:right; }
+  .mrow .st b{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:15px; letter-spacing:-.04em; }
+  .mrow .st i{ font-style:normal; font-size:10.5px; color:var(--ink3); margin-left:3px; }
+
+  /* ---- ボタン ---- */
+  .btn{
+    display:block; width:calc(100% - 36px); margin:10px 18px 0; height:48px;
+    border-radius:14px; border:2px solid var(--purple); background:none; color:var(--ink);
+    font-family:'RocknRoll One',sans-serif; font-size:13px; cursor:pointer;
+  }
+  .btn.ghost{ border-color:var(--line); color:var(--ink2); }
+  .btn.solid{ background:var(--lime); border-color:var(--lime); color:var(--invert); }
+
+  /* ---- 下タブ ---- */
+  nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:16; height:70px; background:var(--card);
+    box-shadow:0 -6px 18px rgba(0,0,0,.38); display:flex; justify-content:center;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav .tabs{ width:100%; max-width:430px; display:flex; align-items:center; }
+  nav .tab{ flex:1; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; background:none; border:0; cursor:pointer; padding:0; }
+  nav .tab .lb{ font-family:'RocknRoll One',sans-serif; font-size:9.5px; color:var(--ink3); }
+  nav .tab.on .inner{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:var(--lime); border-radius:8px; padding:7px 11px 6px; transform:rotate(-1.4deg);
+  }
+  nav .tab.on .lb{ color:var(--invert); }
+  .badge{
+    position:absolute; top:-5px; right:-8px; min-width:17px; height:17px; border-radius:20px;
+    background:var(--red); display:flex; align-items:center; justify-content:center; padding:0 4px;
+    font-family:'Roboto Mono',monospace; font-weight:700; font-size:9.5px; color:#fff; letter-spacing:0;
+  }
+
+  /* ---- お知らせ ---- */
+  .toast{
+    position:fixed; left:50%; bottom:88px; transform:translateX(-50%); z-index:40;
+    background:var(--card); border:1.5px solid var(--line); border-radius:14px;
+    padding:12px 16px; font-size:12.5px; max-width:340px; text-align:center;
+    box-shadow:0 8px 26px rgba(0,0,0,.45);
+  }
+  .toast.err{ border-color:var(--red); }
+
+  /* 地色（#241C52）や面（#332A70）と紛れないよう、ベタ塗りにする */
+  .toast{
+    background:var(--lime); border:0; color:var(--invert);
+    font-family:'Dela Gothic One','Hiragino Sans',sans-serif; line-height:1.6;
+    box-shadow:0 10px 30px rgba(0,0,0,.55);
+  }
+  .toast.err{ background:var(--red); color:#FFFFFF; border:0; }
+  .toast .btn, .toast button{
+    background:rgba(36,28,82,.14); border:0; color:var(--invert);
+    font-family:'RocknRoll One',sans-serif;
+  }
+  .toast.err .btn, .toast.err button{ background:rgba(255,255,255,.2); color:#FFFFFF; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="ttl dela">サークル戦績</div>
+    <button class="gear" id="gear" title="設定">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C6BCF2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"></path></svg>
+    </button>
+  </header>
+  <main id="app"></main>
+  <nav><div class="tabs" id="tabbar"></div></nav>
+</div>
+
+<script>
+// ===================================================================
+// ホーム画面。登録画面と同じ保存領域を読むので、URLを入れ直す必要はない。
+// ===================================================================
+const LS = { url:'apexGasUrl', key:'apexEditKey', person:'apexPersonId' };
+
+/**
+ * localStorage が使えない環境（file: や data: URL、プライベートモード）でも落ちないようにする。
+ * ここで例外が出ると読み込み時点で止まり、画面が真っ白になる（登録画面で実際になった）。
+ */
+const MEM = {};
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return MEM[k] || null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){ MEM[k] = v; } }
+};
+
+
+/**
+ * 画面をまたいで結果を覚えておく置き場。
+ * タブを切り替えるたびにGASを待つと毎回2〜3秒かかるので、前回の内容で先に描く。
+ * 中身は数秒後に裏で最新へ差し替わる。
+ */
+const CACHE_PREFIX = 'apexCache:';
+function cacheGet(key){
+  try{
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    return (o && o.data) ? o.data : null;
+  }catch(e){ return null; }
+}
+function cacheSet(key, data){
+  try{ localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), data: data })); }
+  catch(e){ /* 容量超過などは無視。次回また取りに行くだけ */ }
+}
+
+/**
+ * 他の画面ぶんを裏で取っておく。
+ * タブを初めて開くときの2〜3秒を無くすため。いま見ている画面が出てから走らせる。
+ * 取れなかったら黙って諦める（次に開いたときに取りに行くだけ）。
+ */
+function warmOtherScreens(myPersonId){
+  const jobs = [
+    ['home',                       { action:'home' }],
+    ['ranking:month::person',      { action:'ranking', period_kind:'month', period_value:'', axis:'person' }],
+    ['circle:',                    { action:'circle' }],
+    ['mypage:' + (myPersonId||''), myPersonId ? { action:'mypage', person_id:myPersonId } : { action:'mypage' }],
+    ['settings',                   { action:'settings' }],
+    ['masters',                    { action:'masters' }],
+    ['review_list',                { action:'review_list' }]
+  ];
+  let i = 0;
+  const next = () => {
+    if(i >= jobs.length) return;
+    const [key, params] = jobs[i++];
+    // すでに新しい控えがあるなら飛ばす（5分もてば十分）
+    let fresh = false;
+    try{
+      const raw = localStorage.getItem(CACHE_PREFIX + key);
+      if(raw){ const o = JSON.parse(raw); fresh = o && (Date.now() - o.t) < 5 * 60 * 1000; }
+    }catch(e){}
+    if(fresh){ next(); return; }
+    apiGet(params)
+      .then(j => { cacheSet(key, j); })
+      .catch(() => {})
+      .then(() => setTimeout(next, 300));   // 1本ずつ。まとめて叩かない
+  };
+  setTimeout(next, 1200);   // いま見ている画面の描画を邪魔しない
+}
+
+const S = {
+  url: store.get(LS.url) || '',
+  personId: store.get(LS.person) || '',
+  home: null,
+  showAll: false   // 「全N試合を見る」を押したか
+};
+
+const app = document.getElementById('app');
+
+// ===================================================================
+// 通信
+// ===================================================================
+function apiGet(params){
+  const q = new URLSearchParams(params).toString();
+  return fetch(S.url + '?' + q, { method:'GET' })
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(j => { if(!j.ok) throw new Error(j.error || '取得に失敗しました'); return j; });
+}
+
+// ===================================================================
+// 部品
+// ===================================================================
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function toast(msg, isError){
+  const old = document.getElementById('toast');
+  if(old) old.remove();
+  const t = document.createElement('div');
+  t.id = 'toast';
+  t.className = 'toast' + (isError ? ' err' : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  if(!isError) setTimeout(() => t.remove(), 2200);
+}
+
+function num(v){
+  if(v === null || v === undefined || v === '') return '—';
+  return Number(v).toLocaleString('ja-JP');
+}
+
+function fmtSec(v){
+  if(v === null || v === undefined || v === '') return '—';
+  const s = Number(v);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+/** 'YYYY-MM-DD' → Date。ずれるので手で組む（new Date('2026-08-17') はUTC扱い） */
+function parseDate(s){
+  const m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+
+const DOW = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+
+/** 何日前か。「前回の3王がそのまま出ている」ことが分かるようにするための表示 */
+function agoLabel(dateStr){
+  const d = parseDate(dateStr);
+  if(!d) return '';
+  const today = new Date();
+  const a = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const days = Math.round((a - d) / 86400000);
+  if(days <= 0) return '今日';
+  if(days === 1) return '昨日';
+  return days + '日前';
+}
+
+/** confirmed_at（ISO文字列）→ 8/17 22:40 */
+function fmtStamp(s){
+  const m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if(!m) return '';
+  return (+m[2]) + '/' + (+m[3]) + ' ' + m[4] + ':' + m[5];
+}
+
+// ===================================================================
+// 下タブ
+// ===================================================================
+const TABS = [
+  ['ホーム','<path d="M4 11.4 12 5l8 6.4"></path><path d="M6.4 10.6V19h11.2v-8.4"></path>', ''],
+  ['ランキング','<path d="M5 20V11"></path><path d="M12 20V4"></path><path d="M19 20v-6"></path>', '../ranking/'],
+  ['サークル','<circle cx="5.5" cy="9.6" r="2.4"></circle><circle cx="18.5" cy="9.6" r="2.4"></circle><circle cx="12" cy="8.6" r="3"></circle><path d="M7 19a5 5 0 0 1 10 0"></path><path d="M1.4 17a4.6 4.6 0 0 1 4.4-4.2"></path><path d="M22.6 17a4.6 4.6 0 0 0-4.4-4.2"></path>', '../circle/'],
+  ['マイページ','<circle cx="12" cy="8" r="3.6"></circle><path d="M5 20a7 7 0 0 1 14 0"></path>', '../mypage/'],
+  ['登録','<path d="M12 4v11"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M5 19h14"></path>', '../record/']
+];
+
+function renderTabs(){
+  const n = S.home ? (S.home.pending || 0) : 0;
+  document.getElementById('tabbar').innerHTML = TABS.map(([name, icon, href]) => {
+    const on = name === 'ホーム';
+    const badge = (name === '登録' && n) ? '<div class="badge">' + n + '</div>' : '';
+    const svg = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' +
+      (on ? '#241C52' : '#A99CE0') + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + icon + '</svg>';
+    if(on){
+      return '<button class="tab on" data-tab="' + name + '"><div class="inner">' +
+        '<div style="position:relative">' + svg + '</div><span class="lb">' + name + '</span></div></button>';
+    }
+    return '<button class="tab" data-tab="' + name + '" data-href="' + href + '">' +
+      '<div style="position:relative">' + svg + badge + '</div><span class="lb">' + name + '</span></button>';
+  }).join('');
+
+  document.querySelectorAll('#tabbar .tab').forEach(b => {
+    b.onclick = () => {
+      if(b.dataset.tab === 'ホーム'){ S.showAll = false; render(); return; }
+      if(b.dataset.href){ location.href = b.dataset.href; return; }
+      toast(b.dataset.tab + 'の画面はまだ作っていません');
+    };
+  });
+}
+
+// ===================================================================
+// URL未設定のとき
+// ===================================================================
+function renderNeedSetup(){
+  app.innerHTML =
+    '<div class="card" style="margin-top:8px">' +
+      '<div class="dela" style="font-size:15px">まず接続先を教えてください</div>' +
+      '<div class="sub" style="margin-top:9px">' +
+        'この端末はまだサーバーの場所を知りません。<br>' +
+        '<span style="color:var(--lime)">登録タブ</span>でWebアプリのURLを保存すると、ここに戦績が出ます。' +
+      '</div>' +
+    '</div>' +
+    '<button class="btn solid" id="go">登録タブをひらく</button>';
+  document.getElementById('go').onclick = () => { location.href = '../record/'; };
+}
+
+// ===================================================================
+// 本体
+// ===================================================================
+function render(){
+  const h = S.home;
+  renderTabs();
+
+  const parts = [];
+
+  // --- 未確認バナー。ゼロのときは丸ごと出さない（代わりの文言も出さない） ---
+  if(h.pending > 0){
+    parts.push(
+      '<button class="alert" id="toRecord">' +
+        '<span>未確認の <span class="mono" style="font-size:15px">' + h.pending + '</span> 試合があるよ</span>' +
+        '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M5 12h13"></path><path d="M12.5 6.5L19 12l-6.5 5.5"></path></svg>' +
+      '</button>');
+  }
+
+  if(!h.session){
+    // 確定ぶんが1試合も無い。看板は出しようがないので、やることを書く
+    parts.push(
+      '<div class="card" style="margin-top:16px">' +
+        '<div class="dela" style="font-size:15px">まだ確定した試合がありません</div>' +
+        '<div class="sub" style="margin-top:9px">' + esc(h.message || '') + '</div>' +
+      '</div>');
+    if(h.pending > 0){
+      parts.push('<button class="btn solid" id="toRecord2">登録タブで確認する</button>');
+    }
+    app.innerHTML = parts.join('');
+    bind();
+    return;
+  }
+
+  // --- 今日の3王 ---
+  const d = parseDate(h.session.session_date);
+  const head = d
+    ? (d.getMonth() + 1) + '/' + d.getDate() + ' ' + DOW[d.getDay()] + '・' + h.session.match_count + ' MATCHES'
+    : h.session.match_count + ' MATCHES';
+
+  const rows = (h.kings || []).map(k => {
+    const none = k.value === null || k.value === undefined;
+    const desc = none ? noneDesc(k.id) : esc(k.desc);
+    const tied = (!none && k.tied) ? '　<b>' + k.tied + '人が同じ数字</b>' : '';
+    return '<div class="krow' + (none ? '' : ' tap') + '" ' + (none ? '' : 'data-king="' + k.id + '"') +
+      ' style="' + (none ? 'opacity:.42' : '') + '">' +
+      '<div class="kline">' +
+        '<div class="ktag">' + esc(k.title) + '</div>' +
+        '<div class="kname">' + (none ? '該当なし' : esc(k.person_name)) + '</div>' +
+        (none ? '' : '<div class="kval">' + num(k.value) + '</div>') +
+      '</div>' +
+      '<div class="kdesc">' + desc + tied + '</div>' +
+    '</div>';
+  }).join('');
+
+  const stamp = fmtStamp(h.session.updated_at);
+  const ago = agoLabel(h.session.session_date);
+  const foot = (ago || stamp)
+    ? '<div class="bfoot"><span>' + esc(ago) + (stamp ? '・<span class="mono" style="font-size:10px">' + stamp + '</span>' : '') + ' の記録</span></div>'
+    : '';
+
+  parts.push(
+    '<div class="board">' +
+      '<div class="bh"><div class="bt">今日の3王</div><div class="bs">' + esc(head) + '</div></div>' +
+      rows + foot +
+    '</div>');
+
+  // --- 試合一覧（押したときだけ開く） ---
+  const ms = h.matches || [];
+  if(S.showAll && ms.length){
+    parts.push(
+      '<div class="sechead"><div class="t">この日の試合</div>' +
+      '<div class="n">' + ms.length + '戦</div></div>');
+    parts.push(ms.map(m => {
+      const p = m.squad_place;
+      const placeColor = (p === 1) ? 'var(--yellow)' : (p !== null && p <= 3) ? 'var(--lime)' : 'var(--ink)';
+      return '<div class="mrow tap" data-match="' + m.match_id + '">' +
+        '<div class="seq">' + m.seq + '</div>' +
+        '<div class="place" style="color:' + placeColor + '">' +
+          (p === null ? '<span style="font-size:14px;color:var(--ink4)">順位なし</span>' : p + '<small>位</small>') +
+        '</div>' +
+        '<div class="st">' +
+          '<b>' + num(m.squad_total_kills) + '</b><i>キル</i>' +
+          '　<b style="font-size:13px;color:var(--ink2)">' + fmtSec(m.squad_survival_sec) + '</b>' +
+        '</div>' +
+      '</div>';
+    }).join(''));
+    parts.push('<button class="btn ghost" id="hideAll">とじる</button>');
+  } else if(ms.length){
+    parts.push('<button class="btn" id="showAll">この日の全' + ms.length + '試合を見る</button>');
+  }
+
+  parts.push('<button class="btn ghost" id="toRanking">ランキングを見る</button>');
+  parts.push('<div style="height:26px"></div>');
+
+  app.innerHTML = parts.join('');
+  bind();
+}
+
+/** 王が決まらなかった理由。行は消さず、薄くして理由を書く */
+function noneDesc(id){
+  if(id === 'revive') return '今日は誰も味方を起こしていない';
+  if(id === 'kill')   return 'キルの記録がまだない';
+  if(id === 'damage') return 'ダメージの記録がまだない';
+  return '記録がまだない';
+}
+
+function bind(){
+  const go = id => { const e = document.getElementById(id); if(e) e.onclick = () => { location.href = '../record/'; }; };
+  go('toRecord'); go('toRecord2');
+  const sa = document.getElementById('showAll');
+  if(sa) sa.onclick = () => { S.showAll = true; render(); window.scrollTo({ top: 0 }); };
+  const ha = document.getElementById('hideAll');
+  if(ha) ha.onclick = () => { S.showAll = false; render(); };
+  app.querySelectorAll('[data-match]').forEach(el => {
+    el.onclick = () => { location.href = '../record/?match=' + encodeURIComponent(el.dataset.match); };
+  });
+  const tr = document.getElementById('toRanking');
+  if(tr) tr.onclick = () => { location.href = '../ranking/'; };
+  document.querySelectorAll('[data-king]').forEach(el => {
+    el.onclick = () => { location.href = '../ranking/'; };
+  });
+}
+
+document.getElementById('gear').onclick = () => { location.href = '../settings/'; };
+
+// ===================================================================
+// 起動
+// ===================================================================
+async function boot(){
+  renderTabs();
+  if(!S.url){ renderNeedSetup(); return; }
+
+  // 前回の内容があれば先に描く。無いときだけ待たせる
+  const cached = cacheGet('home');
+  if(cached){ S.home = cached; render(); }
+  else{
+    app.innerHTML =
+      '<div class="card" style="margin-top:8px">' +
+        '<div class="dela" style="font-size:15px">サーバーに聞いています…</div>' +
+        '<div class="sub" style="margin-top:8px">数秒かかります。そのままお待ちください。</div>' +
+      '</div>';
+  }
+
+  try{
+    S.home = await apiGet({ action:'home' });
+    cacheSet('home', S.home);
+    render();
+    warmOtherScreens(store.get(LS.person));
+  }catch(e){
+    if(cached) return;   // 控えを出せているので、通信の失敗で画面を壊さない
+    app.innerHTML =
+      '<div class="card" style="margin-top:8px">' +
+        '<div class="dela" style="font-size:15px">つながりませんでした</div>' +
+        '<div class="sub" style="margin-top:9px">' + esc(e.message) + '</div>' +
+      '</div>' +
+      '<button class="btn" id="again">もう一度ためす</button>';
+    document.getElementById('again').onclick = boot;
+  }
+}
+
+boot();
+</script>
+
+<script>
+// ホーム画面のアイコンから開けるようにする。電波が悪くても画面自体は出る。
+// 数字の控えは画面側（localStorage）が持っているので、ここでは触らない。
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(function () {
+      // 登録できなくてもアプリは普通に動く。file:// で開いたときなど
+    });
+  });
+}
+</script>
+</body>
+</html>
