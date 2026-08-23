@@ -258,6 +258,10 @@
 // ===================================================================
 // 状態
 // ===================================================================
+
+/** サーバー（GASのWebアプリ）の住所。設定画面で上書きできる */
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbxIVM6CusWbS3534Ij87AaLW25BKwh6vyLsmFj2OS1w0etmKJZODTmur27Bkm7tvo6sNA/exec';
+
 const LS = {
   url: 'apexGasUrl', key: 'apexEditKey', person: 'apexPersonId', last: 'apexLastMatchId'
 };
@@ -330,7 +334,7 @@ function warmOtherScreens(myPersonId){
 }
 
 const S = {
-  url: store.get(LS.url) || '',
+  url: store.get(LS.url) || DEFAULT_GAS_URL,
   key: store.get(LS.key) || '',
   personId: store.get(LS.person) || '',
   masters: null,
@@ -460,11 +464,12 @@ function renderSetup(){
   const persons = (S.masters && S.masters.persons) || [];
   app.innerHTML = `
     <div class="card" style="margin-top:8px">
-      <div class="sub">この3つはこの端末に保存されます。次回から入力は要りません。</div>
+      <div class="sub">この端末に保存されます。次回から入力は要りません。</div>
       ${store.usable() ? '' : '<div class="sub" style="color:var(--red);margin-top:8px">いまの開き方では設定を保存できません（ファイルを直接開いているためです）。公開したURLから開いてください。</div>'}
 
       <label for="f_url">WebアプリのURL</label>
       <input id="f_url" type="text" value="${esc(S.url)}" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" spellcheck="false">
+      <div class="sub" style="margin-top:6px">最初から入っています。<b style="color:var(--ink2)">触らなくて大丈夫です。</b></div>
 
       <label for="f_key">編集キー</label>
       <div style="position:relative">

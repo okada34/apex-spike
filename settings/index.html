@@ -208,6 +208,10 @@
 // ログインは作っていない。この端末が「あなたは誰？」を覚えているだけ。
 // だから操作は全員に開いていて、誰がやったかを edit_logs に全部残す。
 // ===================================================================
+
+/** サーバー（GASのWebアプリ）の住所。設定画面で上書きできる */
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbxIVM6CusWbS3534Ij87AaLW25BKwh6vyLsmFj2OS1w0etmKJZODTmur27Bkm7tvo6sNA/exec';
+
 const LS = { url:'apexGasUrl', key:'apexEditKey', person:'apexPersonId' };
 const MEM = {};
 const store = {
@@ -270,7 +274,7 @@ function warmOtherScreens(myPersonId){
 }
 
 const S = {
-  url: store.get(LS.url) || '',
+  url: store.get(LS.url) || DEFAULT_GAS_URL,
   key: store.get(LS.key) || '',
   personId: store.get(LS.person) || '',
   data: null,

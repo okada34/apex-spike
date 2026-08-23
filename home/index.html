@@ -163,6 +163,10 @@
 // ===================================================================
 // ホーム画面。登録画面と同じ保存領域を読むので、URLを入れ直す必要はない。
 // ===================================================================
+
+/** サーバー（GASのWebアプリ）の住所。設定画面で上書きできる */
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbxIVM6CusWbS3534Ij87AaLW25BKwh6vyLsmFj2OS1w0etmKJZODTmur27Bkm7tvo6sNA/exec';
+
 const LS = { url:'apexGasUrl', key:'apexEditKey', person:'apexPersonId' };
 
 /**
@@ -230,7 +234,7 @@ function warmOtherScreens(myPersonId){
 }
 
 const S = {
-  url: store.get(LS.url) || '',
+  url: store.get(LS.url) || DEFAULT_GAS_URL,
   personId: store.get(LS.person) || '',
   home: null,
   showAll: false   // 「全N試合を見る」を押したか

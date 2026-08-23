@@ -195,6 +195,10 @@
 // ランキング画面。1回の通信で 個人・表彰・構成 の3つぶんを受け取る。
 // GASは1往復に数秒かかるので、指標タブの切替では通信しない。
 // ===================================================================
+
+/** サーバー（GASのWebアプリ）の住所。設定画面で上書きできる */
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbxIVM6CusWbS3534Ij87AaLW25BKwh6vyLsmFj2OS1w0etmKJZODTmur27Bkm7tvo6sNA/exec';
+
 const LS = { url:'apexGasUrl', key:'apexEditKey', person:'apexPersonId' };
 const MEM = {};
 const store = {
@@ -257,7 +261,7 @@ function warmOtherScreens(myPersonId){
 }
 
 const S = {
-  url: store.get(LS.url) || '',
+  url: store.get(LS.url) || DEFAULT_GAS_URL,
   data: null,
   view: 'person',        // person | compo | awards
   metric: 'avg_damage',

@@ -195,6 +195,10 @@
 // ===================================================================
 // マイページ。称号はスプリット単位、データランクだけ全期間で積む。
 // ===================================================================
+
+/** サーバー（GASのWebアプリ）の住所。設定画面で上書きできる */
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbxIVM6CusWbS3534Ij87AaLW25BKwh6vyLsmFj2OS1w0etmKJZODTmur27Bkm7tvo6sNA/exec';
+
 const LS = { url:'apexGasUrl', key:'apexEditKey', person:'apexPersonId' };
 const MEM = {};
 const store = {
@@ -257,7 +261,7 @@ function warmOtherScreens(myPersonId){
 }
 
 const S = {
-  url: store.get(LS.url) || '',
+  url: store.get(LS.url) || DEFAULT_GAS_URL,
   myPersonId: store.get(LS.person) || '',
   personId: '',
   data: null,
