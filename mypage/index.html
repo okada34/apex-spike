@@ -315,6 +315,11 @@ function toast(msg){
   const t = document.createElement('div'); t.id='toast'; t.className='toast'; t.textContent=msg;
   document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
 }
+/** 称号を取った日時。「8/24 04:46」の形にする */
+function fmtGranted(v){
+  const m = String(v || '').match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  return m ? ((+m[2]) + '/' + (+m[3]) + ' ' + m[4] + ':' + m[5]) : '';
+}
 function n0(v){ return (v === null || v === undefined) ? '—' : Math.round(Number(v)).toLocaleString('ja-JP'); }
 function n1(v){ return (v === null || v === undefined) ? '—' : Number(v).toFixed(1); }
 
@@ -438,17 +443,19 @@ function renderMain(){
       '登録タブでスクショを確認して確定すると、ここに出ます。</div></div>';
   }
 
-  // 新しく取った称号。上位2つを看板に出す
+  // 新しく取った称号。取った順に並んでいるので、頭の2つが直近
   const held = (d.titles || []).filter(t => t.held);
-  const board = held.length
-    ? '<div class="board"><div class="bh"><div class="bt">持っている称号</div>' +
+  const recent = (d.held_titles && d.held_titles.length) ? d.held_titles : held;
+  const stamp = recent.length ? fmtGranted(recent[0].granted_at) : '';
+  const board = recent.length
+    ? '<div class="board"><div class="bh"><div class="bt">新しく取った称号</div>' +
       '<div class="bs">' + esc(d.split_label) + '</div></div>' +
-      held.slice(0, 2).map(t =>
+      recent.slice(0, 2).map(t =>
         '<div class="krow"><div class="kline"><div class="ktag">称号</div>' +
         '<div class="kname">' + esc(t.name) + '</div>' +
         '<div class="kval">' + n0(t.value) + esc(t.unit) + '</div></div>' +
         '<div class="kdesc">' + esc(t.desc) + '</div></div>').join('') +
-      '<div class="bfoot"><span>' + esc(d.split_label) + ' の集計</span></div></div>'
+      '<div class="bfoot"><span>' + (stamp ? esc(stamp) + ' 現在' : esc(d.split_label) + ' の集計') + '</span></div></div>'
     : '';
 
   const badges = held.length
