@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>診断｜Apexサークル戦績</title>
+<meta name="theme-color" content="#241C52">
+<style>
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; padding:14px 12px 40px; background:#241C52; color:#fff;
+    font-family:system-ui,-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;
+    font-size:14px; line-height:1.6;
+  }
+  h1{ font-size:17px; margin:0 0 4px; }
+  .lead{ font-size:12px; color:#A99CE0; margin-bottom:14px; }
+  .row{ background:#332A70; border-radius:10px; padding:10px 12px; margin-bottom:7px; }
+  .k{ font-size:11px; color:#A99CE0; }
+  .v{ font-size:13px; word-break:break-all; margin-top:2px; }
+  .ok{ color:#C8FF00; }
+  .ng{ color:#FF5470; }
+  .wait{ color:#FFE646; }
+  button{
+    width:100%; margin-top:10px; padding:14px; border:0; border-radius:12px;
+    background:#7C5CFF; color:#fff; font-size:14px; font-family:inherit;
+  }
+  button.danger{ background:#FF5470; }
+  #log{ font-family:ui-monospace,monospace; font-size:11px; white-space:pre-wrap; word-break:break-all; }
+</style>
+</head>
+<body>
+<h1>接続の診断</h1>
+<div class="lead">この画面を撮って送ってください。全部そろっています。</div>
+<div id="out"></div>
+<button id="again">もう一度しらべる</button>
+<button id="reset" class="danger">この端末に残っている記録を消す</button>
+
+<script>
+// 依頼者のスマホでだけ通信が失敗する。手元では再現しないため、
+// 端末の中で実際に起きていることをその場で調べて、画面に出す。
+var GAS = 'https://script.google.com/macros/s/AKfycbxIVM6CusWbS3534Ij87AaLW25BKwh6vyLsmFj2OS1w0etmKJZODTmur27Bkm7tvo6sNA/exec';
+var out = document.getElementById('out');
+
+function add(k, v, cls) {
+  var d = document.createElement('div');
+  d.className = 'row';
+  d.innerHTML = '<div class="k"></div><div class="v ' + (cls || '') + '"></div>';
+  d.querySelector('.k').textContent = k;
+  d.querySelector('.v').textContent = v;
+  out.appendChild(d);
+  return d;
+}
+
+/** 例外の正体を、名前とメッセージの両方で残す */
+function errText(e) {
+  return (e && e.name ? e.name : '?') + ' / ' + (e && e.message ? e.message : String(e));
+}
+
+async function run() {
+  out.innerHTML = '';
+
+  add('いまの場所', location.origin + location.pathname);
+  add('安全な接続', window.isSecureContext ? 'はい' : 'いいえ', window.isSecureContext ? 'ok' : 'ng');
+  add('ブラウザ', navigator.userAgent);
+  add('通信できる状態か', navigator.onLine ? 'はい' : 'いいえ（オフライン）', navigator.onLine ? 'ok' : 'ng');
+
+  // --- サーバーへの問い合わせを、条件を変えて3通り試す ---
+  var r1 = add('① ふつうに問い合わせる', 'しらべています…', 'wait');
+  try {
+    var res = await fetch(GAS + '?action=home');
+    var txt = await res.text();
+    var head = txt.slice(0, 60).replace(/\s+/g, ' ');
+    var isJson = txt.trim().charAt(0) === '{';
+    r1.querySelector('.v').textContent = 'HTTP ' + res.status + ' / ' + (isJson ? '正常なデータ' : 'データではない') + ' / ' + head;
+    r1.querySelector('.v').className = 'v ' + (isJson ? 'ok' : 'ng');
+  } catch (e) {
+    r1.querySelector('.v').textContent = '失敗 → ' + errText(e);
+    r1.querySelector('.v').className = 'v ng';
+  }
+
+  var r2 = add('② 中身を見ずに届くかだけ試す', 'しらべています…', 'wait');
+  try {
+    await fetch(GAS + '?action=home', { mode: 'no-cors' });
+    r2.querySelector('.v').textContent = '届いた（サーバーまでは行けている）';
+    r2.querySelector('.v').className = 'v ok';
+  } catch (e) {
+    r2.querySelector('.v').textContent = '届かない → ' + errText(e);
+    r2.querySelector('.v').className = 'v ng';
+  }
+
+  var r3 = add('③ Google自体に届くか', 'しらべています…', 'wait');
+  try {
+    await fetch('https://script.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
+    r3.querySelector('.v').textContent = '届く';
+    r3.querySelector('.v').className = 'v ok';
+  } catch (e) {
+    r3.querySelector('.v').textContent = '届かない → ' + errText(e);
+    r3.querySelector('.v').className = 'v ng';
+  }
+
+  // --- 端末に残っているもの ---
+  var sw = 'この端末では使えない';
+  if ('serviceWorker' in navigator) {
+    try {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      sw = regs.length ? (regs.length + '件 / ' + regs.map(function (x) { return x.scope; }).join(' , ')) : 'なし';
+    } catch (e) { sw = '調べられない ' + errText(e); }
+  }
+  add('オフライン用の仕組み', sw);
+
+  var ck = 'なし';
+  try {
+    var keys = await caches.keys();
+    ck = keys.length ? keys.join(' , ') : 'なし';
+  } catch (e) { ck = '調べられない'; }
+  add('保存されている画面', ck);
+
+  var ls = [];
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k.indexOf('apex') !== 0) continue;
+      var v = localStorage.getItem(k) || '';
+      ls.push(k + '=' + (v.length > 24 ? ('…' + v.slice(-14) + '（' + v.length + '文字）') : v));
+    }
+  } catch (e) { ls.push('読めない'); }
+  add('この端末が覚えている設定', ls.length ? ls.join('\n') : 'なし');
+}
+
+document.getElementById('again').onclick = run;
+
+document.getElementById('reset').onclick = async function () {
+  if (!confirm('この端末に残っている画面と設定を消します。アプリを開き直せば入れ直せます。よろしいですか？')) return;
+  try {
+    var regs = await navigator.serviceWorker.getRegistrations();
+    for (var i = 0; i < regs.length; i++) await regs[i].unregister();
+  } catch (e) {}
+  try {
+    var keys = await caches.keys();
+    for (var j = 0; j < keys.length; j++) await caches.delete(keys[j]);
+  } catch (e) {}
+  try {
+    Object.keys(localStorage).forEach(function (k) { if (k.indexOf('apex') === 0) localStorage.removeItem(k); });
+  } catch (e) {}
+  alert('消しました。この画面を閉じて、アプリを開き直してください。');
+  run();
+};
+
+run();
+</script>
+</body>
+</html>

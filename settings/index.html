@@ -212,6 +212,28 @@
 /** サーバー（GASのWebアプリ）の住所。設定画面で上書きできる */
 const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbxIVM6CusWbS3534Ij87AaLW25BKwh6vyLsmFj2OS1w0etmKJZODTmur27Bkm7tvo6sNA/exec';
 
+/**
+ * 保存された住所が壊れていたら使わない。
+ * GASのWebアプリの住所は半角英数と - _ だけでできている。
+ * 1文字でも別の文字が混ざっていたら、手入力の失敗とみなして埋め込みのほうを使う。
+ */
+function sanitizeGasUrl(u){
+  if(!u) return '';
+  var head = 'https://script.google.com/macros/s/';
+  var tail = '/exec';
+  if(u.indexOf(head) !== 0) return '';
+  if(u.slice(-tail.length) !== tail) return '';
+  var id = u.slice(head.length, u.length - tail.length);
+  if(!id) return '';
+  // 半角英数と - _ 以外が1文字でも混ざっていたら、手入力の失敗とみなす
+  for(var i = 0; i < id.length; i++){
+    var c = id.charCodeAt(i);
+    var ok = (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 45 || c === 95;
+    if(!ok) return '';
+  }
+  return u;
+}
+
 const LS = { url:'apexGasUrl', key:'apexEditKey', person:'apexPersonId' };
 const MEM = {};
 const store = {
@@ -274,7 +296,7 @@ function warmOtherScreens(myPersonId){
 }
 
 const S = {
-  url: store.get(LS.url) || DEFAULT_GAS_URL,
+  url: sanitizeGasUrl(store.get(LS.url)) || DEFAULT_GAS_URL,
   key: store.get(LS.key) || '',
   personId: store.get(LS.person) || '',
   data: null,
