@@ -70,6 +70,32 @@
   }
   .mtab.on{ background:var(--purple); color:var(--ink); }
 
+  /* ---- 横スワイプで指標を変える ---- */
+  /*
+     pan-y = 「縦は今までどおりブラウザに任せる。横だけこちらで扱う」
+     これを書かないと、横に振ったときブラウザが先に反応して指を持っていかれる
+  */
+  #swipe{ touch-action:pan-y; will-change:transform, opacity; }
+  #swipe.sliding{ transition:transform .19s cubic-bezier(.22,.61,.36,1), opacity .19s ease; }
+
+  /* 指標バーは自前で横に動く。ここまでこちらが横を奪うと、バーが動かせなくなる */
+  .mtabs{ touch-action:pan-x; }
+
+  /* 個人／構成のバーも横に振れる */
+  #seg{ touch-action:pan-y; }
+  #seg .in{ will-change:transform; }
+  #seg .in.sliding{ transition:transform .19s cubic-bezier(.22,.61,.36,1); }
+
+  /* 端まで来たことを、跳ね返りで伝える */
+  @keyframes nudge{ 0%{transform:translateX(0)} 35%{transform:translateX(var(--nx))} 100%{transform:translateX(0)} }
+  #swipe.nudge{ animation:nudge .22s ease-out; }
+
+  /* 動きを減らす設定の人には動かさない。切り替わりだけ伝わればよい */
+  @media (prefers-reduced-motion: reduce){
+    #swipe.sliding, #seg .in.sliding{ transition:none; }
+    #swipe.nudge{ animation:none; }
+  }
+
   /* ---- 順位の行 ---- */
   .rrow{ margin:0 18px 10px; background:var(--card); border-radius:18px; padding:14px 15px; }
   .rhead{ display:flex; align-items:center; gap:11px; }
@@ -625,7 +651,11 @@ function renderPerson(){
     '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="' + (hot ? '#241C52' : '#C6BCF2') + '" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M5 12h13"></path><path d="M12.5 6.5L19 12l-6.5 5.5"></path></svg>' +
   '</button>';
 
-  return chips() + tabs + '<div style="height:16px"></div>' + rows + entry + '<div style="height:24px"></div>';
+  // 指標で変わるのはここから下だけ。
+  // 期間チップと指標バーまで一緒に動かすと、
+  // **変わっていないものまで変わったように見える**
+  return chips() + tabs +
+    '<div id="swipe"><div style="height:16px"></div>' + rows + entry + '<div style="height:24px"></div></div>';
 }
 
 /** 月初の1週間か。表彰の入口を黄にするかどうかの判定だけに使う */
@@ -779,6 +809,199 @@ function compoFilter(d){
 // ===================================================================
 // 描画
 // ===================================================================
+// ===================================================================
+// 横スワイプ
+// ===================================================================
+//
+// === なぜ要るのか ===
+//
+// 指標を変えるボタンは画面のいちばん上にある。**スマホを片手で持つと、
+// 親指はそこまで届かない。**反対の手を使うことになり、
+// 「出場試合数」に至っては、バーを横に送ってから押す必要がある。
+//
+// 画面のどこを雑に横へ払っても指標が変わるようにする。
+//
+// === 気をつけたこと ===
+//
+// 1. **縦スクロールを壊さない。** 横に払ったと判断できるまで手を出さない。
+// 2. **指標バー自身の横スクロールを奪わない。** バーの上から始まった指は素通しする。
+// 3. **押すつもりの指を横移動と誤解しない。** 動いた距離が小さいうちは何もしない。
+
+/** 横に払ったと認める距離（px） */
+var SWIPE_MIN = 45;
+/** 縦より横が勝っていると認める比 */
+var SWIPE_RATIO = 1.4;
+/** 指に追従させる量。1.0だと軽すぎて誤爆するので少し重くする */
+var SWIPE_FOLLOW = 0.42;
+
+/**
+ * 横スワイプを付ける。
+ *
+ * @param {Element} zone      指を受ける範囲
+ * @param {Function} moveEl   動かす要素を返す（毎回取り直す。描き直しで別物になるため）
+ * @param {Function} onSwipe  (dir) dir は -1(左へ払った=次) / +1(右へ払った=前)
+ * @param {Function} [skip]   true を返したら、その指は無視する
+ */
+function attachSwipe(zone, moveEl, onSwipe, skip){
+  var x0 = 0, y0 = 0, dx = 0, active = false, decided = false, ignore = false;
+
+  var el = function(){ try { return moveEl(); } catch(e){ return null; } };
+
+  var setX = function(px, animate){
+    var m = el(); if(!m) return;
+    m.classList.toggle('sliding', !!animate);
+    m.style.transform = px ? ('translateX(' + px + 'px)') : '';
+    if(m.id === 'swipe') m.style.opacity = px ? String(Math.max(.55, 1 - Math.abs(px) / 260)) : '';
+  };
+
+  var reset = function(){
+    var m = el();
+    if(m){ m.classList.remove('sliding'); m.style.transform = ''; m.style.opacity = ''; }
+    active = decided = ignore = false; dx = 0;
+  };
+
+  zone.addEventListener('touchstart', function(e){
+    if(e.touches.length !== 1){ ignore = true; return; }
+    // 指標バーの上から始まった指は、バー自身の横スクロールのもの
+    ignore = !!(skip && skip(e.target));
+    if(ignore) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    dx = 0; active = true; decided = false;
+  }, { passive: true });
+
+  zone.addEventListener('touchmove', function(e){
+    if(!active || ignore) return;
+    var mx = e.touches[0].clientX - x0;
+    var my = e.touches[0].clientY - y0;
+
+    if(!decided){
+      // まだどちらとも言えないうちは何もしない。**縦スクロールが最優先**
+      if(Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+      if(Math.abs(mx) < Math.abs(my) * SWIPE_RATIO){ active = false; return; }  // 縦だった
+      decided = true;
+    }
+    dx = mx;
+    setX(dx * SWIPE_FOLLOW, false);
+    // 横だと決まった以上、ブラウザに横をやらせない
+    if(e.cancelable) e.preventDefault();
+  }, { passive: false });
+
+  var end = function(){
+    if(!active || ignore){ reset(); return; }
+    var d = dx;
+    active = false;
+    if(!decided || Math.abs(d) < SWIPE_MIN){ setX(0, true); setTimeout(reset, 200); return; }
+    onSwipe(d < 0 ? -1 : 1, function(ok){
+      var m = el(); if(!m){ reset(); return; }
+      if(!ok){
+        // 端まで来ていた。跳ね返して「これ以上ない」と伝える
+        setX(0, true);
+        m.style.setProperty('--nx', (d < 0 ? -14 : 14) + 'px');
+        m.classList.add('nudge');
+        setTimeout(function(){ m.classList.remove('nudge'); reset(); }, 240);
+      } else {
+        reset();
+      }
+    });
+  };
+
+  zone.addEventListener('touchend', end, { passive: true });
+  zone.addEventListener('touchcancel', function(){ setX(0, true); setTimeout(reset, 200); }, { passive: true });
+}
+
+/** いまの指標の並び順での位置 */
+function metricIndex(){
+  var ms = (S.data && S.data.metrics) || [];
+  for(var i = 0; i < ms.length; i++) if(ms[i].id === S.metric) return i;
+  return 0;
+}
+
+/** 指標を1つ動かす。動かせたら true */
+function stepMetric(dir){
+  var ms = (S.data && S.data.metrics) || [];
+  if(ms.length < 2) return false;
+  // 左へ払う(dir=-1) = 次を見たい
+  var next = metricIndex() + (dir < 0 ? 1 : -1);
+  if(next < 0 || next >= ms.length) return false;
+  S.metric = ms[next].id;
+  return true;
+}
+
+/**
+ * 指標を変えて、流れるように差し替える。
+ *
+ * 中身を入れ替えてから逆側に置き、1コマ待って0へ戻す。
+ * **1コマ待たないと、置いた瞬間から0へ戻る扱いになって動きが出ない。**
+ */
+function slideMetric(dir, done){
+  var m = document.getElementById('swipe');
+  if(!m || !stepMetric(dir)){ done(false); return; }
+
+  var w = Math.min(window.innerWidth || 380, 430);
+  m.classList.add('sliding');
+  m.style.transform = 'translateX(' + (dir < 0 ? -w * .5 : w * .5) + 'px)';
+  m.style.opacity = '0';
+
+  setTimeout(function(){
+    render();                                  // ここで #swipe は別物に変わる
+    var n = document.getElementById('swipe');
+    if(!n){ done(true); return; }
+    n.classList.remove('sliding');
+    n.style.transform = 'translateX(' + (dir < 0 ? w * .38 : -w * .38) + 'px)';
+    n.style.opacity = '0';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        n.classList.add('sliding');
+        n.style.transform = '';
+        n.style.opacity = '';
+        setTimeout(function(){ n.classList.remove('sliding'); }, 220);
+      });
+    });
+    // 選ばれている指標が見えないと、どこにいるのか分からなくなる
+    var on = document.querySelector('.mtab.on');
+    if(on && on.scrollIntoView) {
+      try { on.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); } catch(e){}
+    }
+    done(true);
+  }, 150);
+}
+
+/** 個人 ⇔ 構成 を1つ動かす */
+function slideView(dir, done){
+  var order = ['person', 'compo'];
+  var at = order.indexOf(S.view);
+  if(at < 0){ done(false); return; }          // 表彰を見ている最中は動かさない
+  var next = at + (dir < 0 ? 1 : -1);
+  if(next < 0 || next >= order.length){ done(false); return; }
+  S.view = order[next];
+  render();
+  window.scrollTo({ top: 0 });
+  done(true);
+}
+
+function initSwipe(){
+  // 本文。指標を変える
+  attachSwipe(
+    app,
+    function(){ return document.getElementById('swipe'); },
+    function(dir, done){
+      if(S.view !== 'person'){ done(false); return; }   // 構成・表彰では指標が無い
+      slideMetric(dir, done);
+    },
+    function(target){
+      // 指標バーの上から始まった指は、バー自身のもの
+      return !!(target && target.closest && target.closest('.mtabs'));
+    }
+  );
+
+  // 下のバー。個人 ⇔ 構成
+  attachSwipe(
+    segEl,
+    function(){ return segEl.querySelector('.in'); },
+    function(dir, done){ slideView(dir, done); }
+  );
+}
+
 function render(){
   const d = S.data;
   perEl.textContent = d ? d.period.label : '';
@@ -854,6 +1077,8 @@ async function load(){
 
 function boot(){
   renderTabs();
+  initSwipe();   // 指を受ける側は一度付ければよい。
+                 // 動かす側は描き直しで別物になるので、その都度取り直している
   if(!S.url){
     app.innerHTML = '<div class="card" style="margin-top:8px">' +
       '<div class="dela" style="font-size:15px">まず接続先を教えてください</div>' +

@@ -621,16 +621,20 @@ function ingestBlock(){
   // 称号の再集計が落ちていないか。
   // **落ちても画面には何も出ない**（称号が静かに古くなるだけ）ので、ここだけが手がかり
   const a2 = (S.data.admin && S.data.admin.award_sync) || null;
+  // 赤く出す状態。いずれも「称号が黙って古くなっている」可能性がある
+  const BADSYNC = ['trigger_dead', 'killed', 'failing'];
   const syncBlock = !a2 ? '' :
     '<div class="sechead"><div class="t">称号の再集計</div></div>' +
-    '<div class="card' + (a2.state === 'failing' ? ' bad' : '') + '">' +
+    '<div class="card' + (BADSYNC.indexOf(a2.state) >= 0 ? ' bad' : '') + '">' +
       '<div class="acc"><span class="n" style="font-size:12px">状態</span>' +
         '<span class="u" style="font-size:12px;color:' +
-          (a2.state === 'failing' ? 'var(--red)'
+          (BADSYNC.indexOf(a2.state) >= 0 ? 'var(--red)'
             : a2.state === 'slow' ? 'var(--yellow)'
             : a2.state === 'recovered' ? 'var(--yellow)'
             : a2.state === 'unknown' ? 'var(--ink3)' : 'var(--lime)') + '">' +
-        (a2.state === 'failing' ? '失敗したままです'
+        (a2.state === 'trigger_dead' ? '止まっています'
+          : a2.state === 'killed' ? '途中で打ち切られました'
+          : a2.state === 'failing' ? '失敗したままです'
           : a2.state === 'slow' ? '時間がかかっています'
           : a2.state === 'recovered' ? '復旧しました'
           : a2.state === 'unknown' ? 'まだ動いていません' : '正常') +
@@ -647,7 +651,24 @@ function ingestBlock(){
           '<span class="u" style="font-size:12px;color:var(--red)">' + esc(String(a2.last_error_at).slice(0,16).replace('T',' ')) + '</span></div>' +
           '<div class="sub" style="margin-top:8px">' + esc(String(a2.last_error || '')) + '</div>'
         : '') +
-      (a2.state === 'failing'
+      // 自動処理の心拍。再集計は「やることが無ければ呼ばれない」ので、
+      // **こちらが途切れていないことが「生きている」の唯一の証拠**
+      (a2.trigger_at
+        ? '<div class="acc"><span class="n" style="font-size:12px">自動処理の最終確認</span>' +
+          '<span class="u" style="font-size:12px;color:' + (a2.trigger_state === 'dead' ? 'var(--red)' : 'inherit') + '">' +
+          (a2.trigger_ago_min === null ? esc(String(a2.trigger_at).slice(0,16).replace('T',' '))
+            : (a2.trigger_ago_min < 1 ? 'さっき' : a2.trigger_ago_min + '分前')) +
+          '</span></div>'
+        : '') +
+      (a2.state === 'trigger_dead'
+        ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
+          '5分ごとに動くはずの処理が、しばらく動いていません。' +
+          '取り込みも称号の更新も止まっています。</div>'
+        : a2.state === 'killed'
+        ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
+          '前回の再集計が最後まで行きませんでした（6分の上限に当たった可能性）。' +
+          '称号が古いままのおそれがあります。</div>'
+        : a2.state === 'failing'
         ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
           '称号が古いまま止まっている可能性があります。</div>'
         : a2.state === 'slow'
