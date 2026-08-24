@@ -332,10 +332,13 @@ function warmOtherScreens(myPersonId){
     ['ranking:month::person',      { action:'ranking', period_kind:'month', period_value:'', axis:'person' }],
     ['circle:',                    { action:'circle' }],
     ['mypage:' + (myPersonId||''), myPersonId ? { action:'mypage', person_id:myPersonId } : { action:'mypage' }],
-    ['settings',                   { action:'settings' }],
-    ['masters',                    { action:'masters' }],
-    ['review_list',                { action:'review_list' }]
+    ['masters',                    { action:'masters' }]
   ];
+  // settings と review_list は編集キーが要る。持っていない端末では取りに行っても弾かれるだけ
+  if(S.key){
+    jobs.push(['settings',    { action:'settings' }]);
+    jobs.push(['review_list', { action:'review_list' }]);
+  }
   let i = 0;
   const next = () => {
     if(i >= jobs.length) return;
@@ -386,11 +389,24 @@ const saveEl = document.getElementById('savestate');
 // ===================================================================
 // 通信（既存の実装から引き継ぎ。実データで動作確認ずみ）
 // ===================================================================
+/**
+ * 読み取り。生データ（一覧・試合の詳細・画像）はサーバー側で編集キーを要求するので、
+ * 持っていれば毎回付ける。集計済みの画面は鍵が無くても返る。
+ */
 function apiGet(params){
-  const q = new URLSearchParams(params).toString();
+  const p = Object.assign({}, params);
+  if(S.key) p.key = S.key;
+  const q = new URLSearchParams(p).toString();
   return fetch(S.url + '?' + q, { method:'GET' })
     .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(j => { if(!j.ok) throw new Error(j.error || '取得に失敗しました'); return j; });
+    .then(j => {
+      if(!j.ok){
+        const e = new Error(j.error || '取得に失敗しました');
+        e.code = j.code || '';
+        throw e;
+      }
+      return j;
+    });
 }
 
 /**
@@ -572,6 +588,22 @@ async function renderList(){
   S.view = 'list';
   titleEl.textContent = '登録';
   backEl.hidden = true;
+
+  // 登録画面は鍵が無いと何も直せない。読み込みを試す前にここで止める
+  if(!S.key){
+    app.innerHTML = `<div class="card" style="margin-top:8px">
+        <div class="dela" style="font-size:15px">この画面には編集キーが要ります</div>
+        <div class="sub" style="margin-top:9px">
+          取り込んだ試合の中身を直す画面なので、キーを入れた人だけが開けます。<br>
+          <b>戦績を見るだけなら、ホーム・ランキング・サークル・マイページは鍵なしで見られます。</b>
+        </div>
+        <button class="btn limeline" id="needKey" style="margin-top:14px">編集キーを入れる</button>
+      </div>`;
+    const b = document.getElementById('needKey');
+    if(b) b.onclick = () => renderSetup();
+    renderTabs();
+    return;
+  }
 
   if(!S.list) S.list = cacheGet('review_list');
   if(!S.list){
