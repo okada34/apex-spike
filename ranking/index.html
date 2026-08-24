@@ -558,19 +558,31 @@ function renderPerson(){
 
   const max = Math.max.apply(null, subs.map(s => Number(s[met.id]) || 0).concat([0])) || 1;
 
+  // 率の指標（1位率・5位以内率）は「順位が読めた試合」でしか割れない。
+  // 出場試合数で規定を見ると、順位が1件しか読めていない人が100%で1位になる
+  const useRate = met.denom === 'placed_games';
+  const denomOf = s => useRate ? (s.placed_games || 0) : (s.games || 0);
+  const okOf = s => useRate ? !!s.qualified_rate : !!s.qualified;
+
   const rows = subs.map((s, i) => {
     const v = s[met.id];
     const pct = (v === null || v === undefined) ? 0 : Math.max(2, Math.round((Number(v) / max) * 100));
-    const top = i === 0 && s.qualified;
-    const barColor = !s.qualified ? 'var(--ink4)' : (i === 0 ? 'var(--lime)' : 'var(--purple)');
-    const why = s.qualified ? '' :
-      '<div class="why">規定の <span class="mono" style="font-size:11.5px;color:var(--ink2)">' + d.min_games +
-      '試合</span> に届いていないので、月間表彰の対象外です。数字はふつうに見られます。</div>';
-    return '<div class="rrow' + (s.qualified ? '' : ' off') + '">' +
+    const ok = okOf(s);
+    const top = i === 0 && ok;
+    const barColor = !ok ? 'var(--ink4)' : (i === 0 ? 'var(--lime)' : 'var(--purple)');
+    const why = ok ? '' :
+      '<div class="why">' +
+      (useRate
+        ? '順位が読めた試合が <span class="mono" style="font-size:11.5px;color:var(--ink2)">' + denomOf(s) +
+          '試合</span> しかありません。規定の ' + d.min_games + '試合に届いていないので、月間表彰の対象外です。'
+        : '規定の <span class="mono" style="font-size:11.5px;color:var(--ink2)">' + d.min_games +
+          '試合</span> に届いていないので、月間表彰の対象外です。') +
+      '数字はふつうに見られます。</div>';
+    return '<div class="rrow' + (ok ? '' : ' off') + '">' +
       '<div class="rhead">' +
         '<div class="rno' + (top ? ' top' : '') + '"><span>' + (i + 1) + '</span></div>' +
         '<span class="rname">' + esc(s.name) + '</span>' +
-        '<div class="rval"><b>' + fmt(v, met.digits, met.unit) + '</b><i>' + s.games + '戦</i></div>' +
+        '<div class="rval"><b>' + fmt(v, met.digits, met.unit) + '</b><i>' + denomOf(s) + '戦</i></div>' +
       '</div>' +
       '<div class="track"><div style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
       why +
@@ -607,11 +619,15 @@ function renderAwards(){
         '<div class="ad">規定の' + d.min_games + '試合に届いた人がいません</div></div>';
     }
     const met = (d.metrics || []).find(m => m.id === a.metric) || { digits:0, unit:'' };
+    // 何試合で割った数字かを添える。率の部門は「順位が読めた試合」が分母
+    const dn = (a.denom === undefined || a.denom === null) ? a.games : a.denom;
     return '<div class="award">' +
       '<div class="at"><div class="atag">' + esc(a.title) + '</div>' +
-      '<div class="an">' + esc(a.subject_name) + '</div>' +
+      '<div class="an">' + esc(a.subject_name) +
+        (a.tied ? '<span style="font-size:10px;color:var(--yellow);margin-left:6px">同点</span>' : '') +
+      '</div>' +
       '<div class="av">' + fmt(a.value, met.digits, met.unit) + '</div></div>' +
-      '<div class="ad">' + esc(a.desc) + '　<span class="mono" style="font-size:11px;color:var(--ink2)">' + a.games + '戦</span></div>' +
+      '<div class="ad">' + esc(a.desc) + '　<span class="mono" style="font-size:11px;color:var(--ink2)">' + dn + '戦</span></div>' +
     '</div>';
   }).join('');
 

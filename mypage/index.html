@@ -636,9 +636,13 @@ function renderTitles(){
   const held = d.titles.filter(t => t.held);
   const not = d.titles.filter(t => !t.held);
 
+  // 同点のときは持ち主が複数いる。名前が2つ並ぶ理由が分かるよう、印を添える
+  const tieMark = t => t.tied
+    ? '<span style="font-size:10px;color:var(--yellow);margin-left:6px">同点</span>' : '';
+
   const row = (t, mine) =>
     '<div class="trow' + (mine ? '' : ' off') + '">' +
-      '<div class="th"><div class="tn">' + esc(t.name) + '</div>' +
+      '<div class="th"><div class="tn">' + esc(t.name) + tieMark(t) + '</div>' +
       (mine
         ? '<div class="tv">' + (t.value === null ? '—' : n0(t.value) + esc(t.unit)) + '</div>'
         : '<div class="who2">いまは <b>' + (t.holder_name ? esc(t.holder_name) : '誰も持っていない') + '</b></div>') +
