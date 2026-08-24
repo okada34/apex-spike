@@ -44,6 +44,7 @@
   .saving{ font-family:'Roboto Mono',monospace; font-size:10.5px; color:var(--ink3); margin-left:auto; }
 
   .card{ background:var(--card); border-radius:18px; padding:15px; margin:0 18px 10px; }
+  .card.bad{ border-left:4px solid var(--red); }
   .sec{ font-family:'Dela Gothic One',sans-serif; font-size:15px; margin:24px 18px 11px; }
   .sechead{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:24px 18px 11px; }
   .sechead .t{ font-family:'Dela Gothic One',sans-serif; font-size:15px; }
@@ -583,7 +584,33 @@ function ingestBlock(){
       '</div>'
     : '';
 
-  return '<div class="sechead"><div class="t">取り込みの結果</div></div>' +
+  // 控えの無効化が効いているか。効いていないと「直したのに変わらない」が起きる
+  const c2 = (S.data.admin && S.data.admin.cache) || null;
+  const cacheBlock = !c2 ? '' :
+    '<div class="sechead"><div class="t">控え（キャッシュ）の状態</div></div>' +
+    '<div class="card' + (c2.state === 'failing' ? ' bad' : '') + '">' +
+      '<div class="acc"><span class="n" style="font-size:12px">状態</span>' +
+        '<span class="u" style="font-size:12px;color:' +
+          (c2.state === 'failing' ? 'var(--red)' : c2.state === 'recovered' ? 'var(--yellow)' : 'var(--lime)') + '">' +
+        (c2.state === 'failing' ? '失敗したままです' : c2.state === 'recovered' ? '復旧しました' : '正常') +
+        '</span></div>' +
+      '<div class="acc"><span class="n" style="font-size:12px">版</span>' +
+        '<span class="u" style="font-size:12px">' + esc(String(c2.version || '')) + '</span></div>' +
+      '<div class="acc"><span class="n" style="font-size:12px">最後に成功</span>' +
+        '<span class="u" style="font-size:12px">' + (c2.last_ok_at ? esc(String(c2.last_ok_at).slice(0,16).replace('T',' ')) : '—') + '</span></div>' +
+      (c2.last_error_at
+        ? '<div class="acc"><span class="n" style="font-size:12px">最後に失敗</span>' +
+          '<span class="u" style="font-size:12px;color:var(--red)">' + esc(String(c2.last_error_at).slice(0,16).replace('T',' ')) + '</span></div>' +
+          '<div class="sub" style="margin-top:8px">' + esc(String(c2.last_error || '')) + '</div>'
+        : '') +
+      (c2.state === 'failing'
+        ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
+          '直した内容が画面に反映されないことがあります。スプレッドシートを直接編集した場合は特に注意してください。</div>'
+        : '') +
+    '</div>';
+
+  return cacheBlock +
+    '<div class="sechead"><div class="t">取り込みの結果</div></div>' +
     '<div class="card">' + (rows || '<div class="sub">まだありません</div>') + '</div>' +
     fails;
 }
