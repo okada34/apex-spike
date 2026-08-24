@@ -637,7 +637,8 @@ function renderTitles(){
   const not = d.titles.filter(t => !t.held);
 
   // 同点のときは持ち主が複数いる。名前が2つ並ぶ理由が分かるよう、印を添える
-  const tieMark = t => t.tied
+  // 三銃士は組そのものが同点になることがある（trio.tied）
+  const tieMark = t => (t.tied || (t.id === 'three' && (S.data.trio_tied)))
     ? '<span style="font-size:10px;color:var(--yellow);margin-left:6px">同点</span>' : '';
 
   const row = (t, mine) =>

@@ -581,7 +581,9 @@ function render(){
   const rows = (h.kings || []).map(k => {
     const none = k.value === null || k.value === undefined;
     const desc = none ? noneDesc(k.id) : esc(k.desc);
-    const tied = (!none && k.tied) ? '　<b>' + k.tied + '人が同じ数字</b>' : '';
+    // 同点は全員が王。名前が複数並ぶので、その理由を添える
+    const tied = (!none && k.tied)
+      ? '　<b>同点で' + (k.person_ids ? k.person_ids.length : 2) + '人</b>' : '';
     return '<div class="krow' + (none ? '' : ' tap') + '" ' + (none ? '' : 'data-king="' + k.id + '"') +
       ' style="' + (none ? 'opacity:.42' : '') + '">' +
       '<div class="kline">' +
