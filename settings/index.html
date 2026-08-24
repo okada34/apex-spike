@@ -622,7 +622,7 @@ function ingestBlock(){
   // **落ちても画面には何も出ない**（称号が静かに古くなるだけ）ので、ここだけが手がかり
   const a2 = (S.data.admin && S.data.admin.award_sync) || null;
   // 赤く出す状態。いずれも「称号が黙って古くなっている」可能性がある
-  const BADSYNC = ['trigger_dead', 'killed', 'failing'];
+  const BADSYNC = ['trigger_dead', 'killed', 'failing', 'stuck'];
   const syncBlock = !a2 ? '' :
     '<div class="sechead"><div class="t">称号の再集計</div></div>' +
     '<div class="card' + (BADSYNC.indexOf(a2.state) >= 0 ? ' bad' : '') + '">' +
@@ -633,6 +633,7 @@ function ingestBlock(){
             : a2.state === 'recovered' ? 'var(--yellow)'
             : a2.state === 'unknown' ? 'var(--ink3)' : 'var(--lime)') + '">' +
         (a2.state === 'trigger_dead' ? '止まっています'
+          : a2.state === 'stuck' ? '処理できていません'
           : a2.state === 'killed' ? '途中で打ち切られました'
           : a2.state === 'failing' ? '失敗したままです'
           : a2.state === 'slow' ? '時間がかかっています'
@@ -660,7 +661,11 @@ function ingestBlock(){
             : (a2.trigger_ago_min < 1 ? 'さっき' : a2.trigger_ago_min + '分前')) +
           '</span></div>'
         : '') +
-      (a2.state === 'trigger_dead'
+      (a2.state === 'stuck'
+        ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
+          '自動処理は動いていますが、' + (a2.skip_streak || 0) + '回連続で空振りしています。' +
+          '称号の更新待ちが溢まったままになっています。</div>'
+        : a2.state === 'trigger_dead'
         ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
           '5分ごとに動くはずの処理が、しばらく動いていません。' +
           '取り込みも称号の更新も止まっています。</div>'

@@ -951,20 +951,61 @@ function scrollMetricBarIntoView(){
 
   var max = Math.max(0, bar.scrollWidth - bar.clientWidth);
   var to  = Math.max(0, Math.min(max, Math.round(bar.scrollLeft + delta)));
-  if(to === Math.round(bar.scrollLeft)) return;
+  if(Math.abs(to - bar.scrollLeft) < 1) return;
 
-  // まず確実に合わせる。smooth は環境によって無視されるので、
-  // それだけに任せると**選ばれているチップが画面外のままになる**
-  if(bar.scrollTo){
-    try {
-      bar.scrollTo({ left: to, behavior: 'smooth' });
-      setTimeout(function(){
-        if(Math.abs(bar.scrollLeft - to) > 2) bar.scrollLeft = to;   // 動かなかったら即値で
-      }, 260);
-      return;
-    } catch(e){}
-  }
-  bar.scrollLeft = to;
+  animateBarScroll_(bar, to);
+}
+
+/** バーの滑らかさ。中身の動き（.19s）と揃える */
+var BAR_SCROLL_MS_ = 240;
+
+/**
+ * バーを滑らかに横へ動かす。
+ *
+ * === なぜ自分で動かすのか ===
+ *
+ * はじめは `scrollTo({behavior:'smooth'})` に任せていたが、
+ * **この環境ではまったく効かなかった。**
+ * 実測で t=452ms まで 0 のまま、t=477ms で 157 へ一気に飛んでいた
+ * （動かなかったときの保険として入れた即値代入が、毎回仕事をしていた）。
+ *
+ * ブラウザの実装に頼らず、中身の動きと同じ長さ・同じ曲がり方で揃える。
+ */
+function animateBarScroll_(bar, to){
+  var from = bar.scrollLeft;
+  var dist = to - from;
+  if(Math.abs(dist) < 1) return;
+
+  // 動きを減らす設定の人には動かさない
+  var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(calm){ bar.scrollLeft = to; return; }
+
+  // 途中で次のスワイプが来たら、古い動きは捨てる
+  var token = (bar.__barAnim || 0) + 1;
+  bar.__barAnim = token;
+
+  var t0 = null, done = false;
+  var ease = function(t){ return 1 - Math.pow(1 - t, 3); };   // ease-out
+  var step = function(ts){
+    if(bar.__barAnim !== token || !bar.isConnected) return;   // 描き直されたならやめる
+    if(t0 === null) t0 = ts;
+    var p = Math.min(1, (ts - t0) / BAR_SCROLL_MS_);
+    bar.scrollLeft = from + dist * ease(p);
+    if(p < 1) requestAnimationFrame(step);
+    else done = true;
+  };
+  requestAnimationFrame(step);
+
+  // === 保険 ===
+  //
+  // requestAnimationFrame は**画面が見えていないと周ってこない。**
+  // スワイプの途中で他のアプリへ移ると、
+  // バーが途中で止まったままになる。
+  // 滑らかさより、**最後に正しい位置でいること**の方が大事。
+  setTimeout(function(){
+    if(done || bar.__barAnim !== token || !bar.isConnected) return;
+    bar.scrollLeft = to;
+  }, BAR_SCROLL_MS_ + 400);
 }
 
 /** いまの指標の並び順での位置 */
