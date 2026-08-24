@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#241C52">
+<meta name="description" content="一人でランクを回した試合の取り込み方。やることはいつもと同じです。">
+<link rel="canonical" href="https://okada34.github.io/apex-spike/solo/">
+<link rel="icon" href="https://okada34.github.io/apex-spike/icons/favicon-64.png">
+
+<!-- LINEやXに貼ったときの見え方 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="ソロで潜ったとき">
+<meta property="og:description" content="一人でランクを回した試合の取り込み方。やることはいつもと同じです。">
+<meta property="og:url" content="https://okada34.github.io/apex-spike/solo/">
+<meta property="og:image" content="https://okada34.github.io/apex-spike/icons/pwa-512x512.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<title>ソロで潜ったとき</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=RocknRoll+One&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* はじめかた（start）と同じ世界。運用の手引きなので、装飾は最小限にする。 */
+:root{
+  --ground:#241C52; --card:#332A70; --sunken:#2E2559; --line:#493D96;
+  --purple:#7C5CFF; --yellow:#FFE646; --lime:#C8FF00; --red:#FF5470;
+  --ink:#FFFFFF; --ink2:#C6BCF2; --ink3:#A99CE0; --ink4:#8478C4; --invert:#241C52;
+  --dela:'Dela Gothic One','Hiragino Sans','Yu Gothic',sans-serif;
+  --rr:'RocknRoll One','Hiragino Sans','Yu Gothic',sans-serif;
+  --mono:'Roboto Mono',ui-monospace,monospace;
+}
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; overflow-x:hidden; }
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--rr); font-size:16px; line-height:1.85;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{ max-width:760px; margin:0 auto; padding:0 20px 100px; }
+p{ margin:0 0 1em; }
+strong{ color:var(--lime); font-weight:400; }
+em{ font-style:normal; color:var(--yellow); }
+a{ color:var(--lime); }
+a:focus-visible{ outline:3px solid var(--lime); outline-offset:3px; }
+code{
+  font-family:var(--mono); font-size:.86em; background:var(--sunken);
+  border:1px solid var(--line); border-radius:6px; padding:2px 7px;
+}
+
+/* ---------- 表紙 ---------- */
+.hero{ padding:70px 0 10px; }
+.eyebrow{
+  font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.24em;
+  color:var(--ink4); text-transform:uppercase;
+}
+h1{
+  font-family:var(--dela); font-weight:400; font-size:clamp(30px,7.4vw,48px);
+  line-height:1.24; margin:14px 0 18px; text-wrap:balance;
+}
+h1 .hl{ color:var(--lime); }
+.lead{ color:var(--ink2); font-size:17px; }
+
+/* ---------- 結論の箱 ---------- */
+.punch{
+  background:var(--lime); color:var(--invert); border-radius:20px;
+  padding:26px 26px 24px; transform:rotate(-1.4deg); margin:34px 0 44px;
+}
+.punch .t{ font-family:var(--dela); font-size:clamp(20px,4.8vw,28px); line-height:1.4; }
+.punch .d{ font-size:15px; color:rgba(36,28,82,.8); margin-top:12px; line-height:1.8; }
+
+/* ---------- 黄看板 ---------- */
+.board{
+  background:var(--yellow); color:var(--invert); border-radius:20px;
+  padding:22px 24px; transform:rotate(-1.4deg); margin:56px 0 30px;
+}
+.board .n{
+  font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.18em;
+  color:rgba(36,28,82,.6);
+}
+.board h2{
+  font-family:var(--dela); font-weight:400; font-size:clamp(22px,5vw,30px);
+  margin:4px 0 0; line-height:1.3; text-wrap:balance;
+}
+
+/* ---------- カード3枚の図 ---------- */
+.cards{ display:grid; grid-template-columns:1fr 1.15fr 1fr; gap:9px; margin:24px 0 10px; }
+.c{
+  background:var(--card); border:1px solid var(--line); border-radius:14px;
+  padding:14px 10px; text-align:center;
+}
+.c.you{ border-color:var(--lime); border-width:2px; background:var(--sunken); }
+.c .pos{ font-family:var(--mono); font-weight:700; font-size:10px; letter-spacing:.12em; color:var(--ink4); }
+.c .who{ font-family:var(--dela); font-size:14px; margin-top:8px; line-height:1.4; }
+.c.you .who{ color:var(--lime); }
+.c .sub{ font-size:11.5px; color:var(--ink3); margin-top:7px; line-height:1.6; }
+.capt{ text-align:center; font-size:13px; color:var(--ink3); margin-top:6px; }
+
+/* ---------- 手順 ---------- */
+.step{ display:grid; grid-template-columns:52px 1fr; gap:18px; margin:0 0 38px; }
+.step .num{
+  font-family:var(--mono); font-weight:700; font-size:18px; color:var(--invert);
+  background:var(--lime); border-radius:14px; height:52px;
+  display:flex; align-items:center; justify-content:center; transform:rotate(-1.4deg);
+}
+.step h3{ font-family:var(--dela); font-weight:400; font-size:19px; margin:10px 0 12px; line-height:1.45; }
+.step .body{ min-width:0; }
+
+/* ---------- 注記 ---------- */
+.note{
+  background:var(--card); border-left:4px solid var(--yellow); border-radius:0 14px 14px 0;
+  padding:16px 20px; margin:20px 0; font-size:14.5px; color:var(--ink2);
+}
+.note.ok{ border-left-color:var(--lime); }
+.note.warn{ border-left-color:var(--red); }
+.note .t{ color:var(--ink); font-family:var(--dela); font-size:14px; display:block; margin-bottom:7px; }
+
+/* ---------- 表 ---------- */
+.tw{ overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:var(--card); margin:22px 0; }
+table{ border-collapse:collapse; width:100%; min-width:420px; font-size:14.5px; }
+th, td{ text-align:left; padding:13px 16px; border-bottom:1px solid var(--line); line-height:1.7; }
+tbody tr:last-child th, tbody tr:last-child td{ border-bottom:0; }
+thead th{
+  font-family:var(--mono); font-weight:700; font-size:11px; letter-spacing:.1em;
+  color:var(--ink4); background:var(--sunken); white-space:nowrap;
+}
+tbody th{ font-weight:400; color:var(--ink); white-space:nowrap; }
+td.y{ color:var(--lime); white-space:nowrap; }
+td.n{ color:var(--ink4); white-space:nowrap; }
+
+.end{
+  margin-top:64px; padding-top:26px; border-top:1px solid var(--line);
+  text-align:center; color:var(--ink4); font-size:13.5px; line-height:2;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hero">
+  <div class="eyebrow">solo queue</div>
+  <h1>ソロで潜ったときの<br><span class="hl">スクショの置きかた</span></h1>
+  <p class="lead">一人でランクを回した試合も、そのまま戦績に入ります。</p>
+</div>
+
+<div class="punch">
+  <div class="t">やることは、いつもと同じです。</div>
+  <div class="d">
+    リザルトのスクショを撮って、PS Appで共有するだけ。<br>
+    ソロ用の特別な操作はありません。<em>知らない2人は、アプリが自動で「野良」として脇に置きます。</em>
+  </div>
+</div>
+
+<div class="board">
+  <div class="n">WHAT CHANGES</div>
+  <h2>変わるのは1つだけ</h2>
+</div>
+
+<p>リザルト画面には、いつもどおり3人ぶんのカードが並びます。ソロだと、その両隣が知らない人になります。</p>
+
+<div class="cards">
+  <div class="c">
+    <div class="pos">LEFT</div>
+    <div class="who">知らない人</div>
+    <div class="sub">野良として自動登録<br>集計に入らない</div>
+  </div>
+  <div class="c you">
+    <div class="pos">CENTER</div>
+    <div class="who">あなた</div>
+    <div class="sub">ここは必ずあなた<br>成績はぜんぶ入る</div>
+  </div>
+  <div class="c">
+    <div class="pos">RIGHT</div>
+    <div class="who">知らない人</div>
+    <div class="sub">野良として自動登録<br>集計に入らない</div>
+  </div>
+</div>
+<p class="capt">リザルト画面の<strong>中央は、必ず撮った人自身</strong>です。だからソロでも取り違えません。</p>
+
+<div class="note ok">
+  <span class="t">野良の人の情報は残りません</span>
+  名前は記録に残りますが、<strong>ランキングにも称号にも一切入りません。</strong>
+  あとで「この人、実はサブアカだった」と分かれば、設定画面から紐づけ直せます。
+</div>
+
+<div class="board">
+  <div class="n">HOW TO</div>
+  <h2>登録画面ですること</h2>
+</div>
+
+<div class="step">
+  <div class="num">1</div>
+  <div class="body">
+    <h3>自分のキャラだけ選ぶ</h3>
+    <p>野良の枠は <code>対象外</code> と出て、そもそも選べません。<strong>自分の枠だけ選べば先に進めます。</strong></p>
+    <p>「キャラをまとめて直す」を使うときも同じです。野良の枠は飛ばされます。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="num">2</div>
+  <div class="body">
+    <h3>数字は、自分のぶんだけ埋める</h3>
+    <p>野良の数字で必ず要るのは <strong>キルだけ</strong>です。ダメージや復活の回数が読めていなくても、そのままで確定できます。</p>
+    <div class="note">
+      <span class="t">なぜキルだけ必要なのか</span>
+      画面の「部隊の合計キル」と、3人ぶんのキルを足した数が合っているかを、
+      アプリが毎回確かめているからです。1人ぶんでも欠けると、この検算ができません。<br><br>
+      逆に言うと、<strong>ダメージや復活は野良のぶんを誰も使っていない</strong>ので、空欄のままで構いません。
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="num">3</div>
+  <div class="body">
+    <h3>「この試合を確定する」を押す</h3>
+    <p>それで終わりです。<em>「ソロで潜った試合のようです」</em>と出ますが、これは注意ではなく確認のための表示です。そのまま確定して問題ありません。</p>
+  </div>
+</div>
+
+<div class="board">
+  <div class="n">WHERE IT COUNTS</div>
+  <h2>どこに反映されるか</h2>
+</div>
+
+<div class="tw">
+  <table>
+    <thead>
+      <tr><th scope="col">項目</th><th scope="col">ソロの試合</th><th scope="col">理由</th></tr>
+    </thead>
+    <tbody>
+      <tr><th scope="row">自分の成績</th><td class="y">入る</td><td>キル・ダメージ・順位すべて</td></tr>
+      <tr><th scope="row">ランキング</th><td class="y">入る</td><td>個人の指標なので</td></tr>
+      <tr><th scope="row">レジェンド別</th><td class="y">入る</td><td>自分が使ったぶんだけ</td></tr>
+      <tr><th scope="row">データランク</th><td class="y">入る</td><td>戦数として数えます</td></tr>
+      <tr><th scope="row">自己ベスト</th><td class="y">入る</td><td>ソロの記録でも自己ベストです</td></tr>
+      <tr><th scope="row">横井庄一王</th><td class="y">入る</td><td>一人で残ったのは、相手が野良でも事実なので</td></tr>
+      <tr><th scope="row">先陣王</th><td class="y">入る</td><td>同上</td></tr>
+      <tr><th scope="row">一蓮托生</th><td class="n">入らない</td><td><b>野良は仲間ではないため</b></td></tr>
+      <tr><th scope="row">構成カルテ</th><td class="n">入らない</td><td>3人ぶんのキャラが揃わないため</td></tr>
+      <tr><th scope="row">三銃士</th><td class="n">入らない</td><td>メンバー3人での試合を数えるため</td></tr>
+      <tr><th scope="row">野良の人の成績</th><td class="n">入らない</td><td>そもそも集計対象外</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="note ok">
+  <span class="t">「一蓮托生」だけソロを数えません</span>
+  一蓮托生は<strong>仲間と一緒に死ぬのが多い人</strong>を選ぶ称号です。
+  ソロだと両隣は毎回知らない人なので、<em>たまたま同じ時間に落ちただけ</em>で加算されてしまいます。
+  それでは称号の意味が変わるので、<strong>3枠ともサークルのメンバーだった試合しか数えません。</strong><br><br>
+  横井庄一王（一人で残った）と先陣王（最初に落ちた）は、相手が野良でも起きたことは事実なので、
+  ソロの試合も数えます。
+</div>
+
+<div class="board">
+  <div class="n">MIXED DAY</div>
+  <h2>同じ日にサークルとソロが混ざっても平気</h2>
+</div>
+
+<p>
+  昼にサークルで回して、夜に一人で潜った日でも、<strong>スクショをまとめて置くだけ</strong>で構いません。
+  アプリが1試合ずつ中身を見て、野良がいるかどうかを判断します。
+  <strong>撮った順に並べる必要も、分けて置く必要もありません。</strong>
+</p>
+
+<div class="note">
+  <span class="t">読めるのは「リザルト」タブだけ</span>
+  これはソロでも同じです。PS5のリザルト画面は<strong>タブが分かれています</strong>。
+  「ライブ／リザルト」の<strong>リザルト</strong>側で、さらに<strong>「リザルト」タブ</strong>を
+  選んでから撮ってください。順位と3人ぶんの成績は、そこにしか出ません。
+</div>
+
+<div class="end">
+  取り込みは<strong>5分ごと</strong>に自動で動きます。置いてすぐ出てこなくても、少し待ってください。<br>
+  <a href="https://okada34.github.io/apex-spike/">アプリを開く</a>　/
+  <a href="https://okada34.github.io/apex-spike/start/">はじめかた</a>
+</div>
+
+</div>
+</body>
+</html>
