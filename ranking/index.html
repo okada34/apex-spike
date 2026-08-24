@@ -75,15 +75,32 @@
      pan-y = 「縦は今までどおりブラウザに任せる。横だけこちらで扱う」
      これを書かないと、横に振ったときブラウザが先に反応して指を持っていかれる
   */
-  #swipe{ touch-action:pan-y; will-change:transform, opacity; }
+  /*
+     動かしたぶんを、ページの横スクロール領域に足させない。
+
+     **これが無いと壊れる。**合成レイヤーに載った要素を横へ動かすと、
+     ブラウザは横スクロール領域を広げる。ところが元へ戻したとき、
+     **広げた領域を計算し直さない。**幻の余白が残り、
+     そこへ何かがスクロールすると、body が overflow-x:hidden なので
+     **指では二度と戻せない。**（実機で実際に起きた）
+
+     clip は hidden と違ってスクロール箱を作らないので、
+     中の position:sticky / fixed を壊さない。
+     対応していないブラウザは hidden に落ちる（main の中に sticky は無いので実害なし）。
+  */
+  main#app{ overflow-x:hidden; overflow-x:clip; }
+
+  /* will-change は触っている間だけ付ける。付けっぱなしは上の再計算漏れを招く */
+  #swipe{ touch-action:pan-y; }
+  #swipe.moving{ will-change:transform, opacity; }
   #swipe.sliding{ transition:transform .19s cubic-bezier(.22,.61,.36,1), opacity .19s ease; }
 
   /* 指標バーは自前で横に動く。ここまでこちらが横を奪うと、バーが動かせなくなる */
   .mtabs{ touch-action:pan-x; }
 
   /* 個人／構成のバーも横に振れる */
-  #seg{ touch-action:pan-y; }
-  #seg .in{ will-change:transform; }
+  #seg{ touch-action:pan-y; overflow-x:hidden; overflow-x:clip; }
+  #seg .in.moving{ will-change:transform; }
   #seg .in.sliding{ transition:transform .19s cubic-bezier(.22,.61,.36,1); }
 
   /* 端まで来たことを、跳ね返りで伝える */
@@ -850,14 +867,21 @@ function attachSwipe(zone, moveEl, onSwipe, skip){
   var setX = function(px, animate){
     var m = el(); if(!m) return;
     m.classList.toggle('sliding', !!animate);
+    m.classList.toggle('moving', !!px);      // 動かす間だけ合成レイヤーに乗せる
     m.style.transform = px ? ('translateX(' + px + 'px)') : '';
     if(m.id === 'swipe') m.style.opacity = px ? String(Math.max(.55, 1 - Math.abs(px) / 260)) : '';
   };
 
   var reset = function(){
     var m = el();
-    if(m){ m.classList.remove('sliding'); m.style.transform = ''; m.style.opacity = ''; }
+    if(m){ m.classList.remove('sliding'); m.classList.remove('moving'); m.style.transform = ''; m.style.opacity = ''; }
     active = decided = ignore = false; dx = 0;
+    // 幻の横幅へ何かがスクロールしていたら戻す。
+    // body は overflow-x:hidden なので、指では戻せない
+    try {
+      var se = document.scrollingElement || document.documentElement;
+      if (se && se.scrollLeft) se.scrollLeft = 0;
+    } catch(e){}
   };
 
   zone.addEventListener('touchstart', function(e){
@@ -909,6 +933,40 @@ function attachSwipe(zone, moveEl, onSwipe, skip){
   zone.addEventListener('touchcancel', function(){ setX(0, true); setTimeout(reset, 200); }, { passive: true });
 }
 
+/**
+ * 選ばれているチップが見えるよう、**バーだけ**を横へ動かす。
+ * scrollIntoView は先祖を全部動かすので使わない。
+ */
+function scrollMetricBarIntoView(){
+  var bar = document.querySelector('.mtabs');
+  var on  = bar && bar.querySelector('.mtab.on');
+  if(!bar || !on) return;
+
+  // offsetLeft は使わない。.mtabs に position が無いので、
+  // 基準が body になってしまう（実測で確認）。
+  // 見えている位置同士の差で求めれば、位置指定に左右されない
+  var br = bar.getBoundingClientRect();
+  var cr = on.getBoundingClientRect();
+  var delta = (cr.left + cr.width / 2) - (br.left + br.width / 2);
+
+  var max = Math.max(0, bar.scrollWidth - bar.clientWidth);
+  var to  = Math.max(0, Math.min(max, Math.round(bar.scrollLeft + delta)));
+  if(to === Math.round(bar.scrollLeft)) return;
+
+  // まず確実に合わせる。smooth は環境によって無視されるので、
+  // それだけに任せると**選ばれているチップが画面外のままになる**
+  if(bar.scrollTo){
+    try {
+      bar.scrollTo({ left: to, behavior: 'smooth' });
+      setTimeout(function(){
+        if(Math.abs(bar.scrollLeft - to) > 2) bar.scrollLeft = to;   // 動かなかったら即値で
+      }, 260);
+      return;
+    } catch(e){}
+  }
+  bar.scrollLeft = to;
+}
+
 /** いまの指標の並び順での位置 */
 function metricIndex(){
   var ms = (S.data && S.data.metrics) || [];
@@ -957,11 +1015,13 @@ function slideMetric(dir, done){
         setTimeout(function(){ n.classList.remove('sliding'); }, 220);
       });
     });
-    // 選ばれている指標が見えないと、どこにいるのか分からなくなる
-    var on = document.querySelector('.mtab.on');
-    if(on && on.scrollIntoView) {
-      try { on.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); } catch(e){}
-    }
+    // 選ばれている指標が見えないと、どこにいるのか分からなくなる。
+    //
+    // **scrollIntoView は使わない。**
+    // あれは「見える位置まで先祖を全部スクロールする」命令なので、
+    // ページ自体を横へ動かしてしまう（実機で実際に起きた）。
+    // バーの scrollLeft を直接書けば、他は絶対に動かない。
+    scrollMetricBarIntoView();
     done(true);
   }, 150);
 }
