@@ -118,6 +118,21 @@
   .sec{ font-family:'Dela Gothic One',sans-serif; font-size:15px; margin:22px 18px 10px; }
   .sub{ font-size:11px; line-height:1.7; color:var(--ink3); }
 
+  /* ---- 構成の絞り込み ---- */
+  .cfbar{ display:flex; flex-wrap:wrap; gap:6px; margin-top:11px; }
+  .cfb{
+    background:var(--sunken); border:1.5px solid var(--line); border-radius:20px;
+    padding:7px 12px; font-family:'RocknRoll One',sans-serif; font-size:11.5px;
+    color:var(--ink2); cursor:pointer;
+  }
+  .cfb.on{ background:var(--lime); border-color:var(--lime); color:var(--invert); }
+  .cfrow{ display:flex; align-items:baseline; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .cfrow:last-child{ border-bottom:0; }
+  .cfm{ font-size:12px; color:var(--ink); min-width:0; flex:1; line-height:1.6; }
+  .cfv{ display:flex; align-items:baseline; gap:3px; margin-left:auto; }
+  .cfv .mono{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:13px; letter-spacing:-.04em; color:var(--ink); }
+  .cfv i{ font-style:normal; font-size:9.5px; color:var(--ink4); margin-right:7px; }
+
   /* ---- 個人／構成の切替 ---- */
   .seg{
     position:fixed; left:0; right:0; bottom:calc(70px + env(safe-area-inset-bottom)); z-index:15;
@@ -377,12 +392,13 @@ function warmOtherScreens(myPersonId){
 const S = {
   url: sanitizeGasUrl(store.get(LS.url)) || DEFAULT_GAS_URL,
   data: null,
-  view: 'person',        // person | compo | awards
+  view: (new URLSearchParams(location.search).get('view') === 'awards') ? 'awards' : 'person',   // person | compo | awards
   metric: 'avg_damage',
   periodKind: 'month',
   periodValue: '',
   axis: 'person',
-  pending: 0             // 登録タブのバッジ用
+  pending: 0,            // 登録タブのバッジ用
+  compoPick: []          // 構成の絞り込みで選んだレジェンド（2体まで）
 };
 
 const app = document.getElementById('app');
@@ -691,7 +707,56 @@ function renderCompo(){
     '</div>';
   }).join('');
 
-  return chips() + head + cards + '<div style="height:24px"></div>';
+  return chips() + head + cards + compoFilter(d) + '<div style="height:24px"></div>';
+}
+
+/**
+ * 「このレジェンドを入れた構成はどうなのか」を見る絞り込み。
+ *
+ * 部門の1位（上のカード）だけだと「勝ってる構成」しか見えない。
+ * 自分がよく使うレジェンドを選んで、その構成の実際の成績を見られるようにする。
+ * 2体まで選べる（3体選ぶと構成が1つに決まってしまい、絞り込む意味がない）。
+ */
+function compoFilter(d){
+  const all = d.compo_list || [];
+  if(!all.length) return '';
+
+  // 一覧に出てくるレジェンドだけを候補にする。使ったことのない体を並べても選べない
+  const seen = {};
+  all.forEach(c => (c.members || []).forEach(m => { seen[m.legend_id] = m.legend_name; }));
+  const opts = Object.keys(seen).map(id => ({ id, name: seen[id] }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+  const picked = S.compoPick || [];
+  const hit = picked.length
+    ? all.filter(c => picked.every(p => (c.legend_ids || []).indexOf(p) >= 0))
+    : all;
+
+  const buttons = opts.map(o =>
+    '<button class="cfb' + (picked.indexOf(o.id) >= 0 ? ' on' : '') + '" data-cf="' + esc(o.id) + '">' +
+      esc(o.name) + '</button>').join('');
+
+  const rows = hit.slice(0, 20).map(c =>
+    '<div class="cfrow">' +
+      '<div class="cfm">' + (c.members || []).map(m => esc(m.legend_name)).join(' / ') + '</div>' +
+      '<div class="cfv">' +
+        '<span class="mono">' + c.games + '</span><i>戦</i>' +
+        '<span class="mono">' + (c.avg_place === null ? '—' : c.avg_place.toFixed(1)) + '</span><i>位</i>' +
+        '<span class="mono">' + Math.round(c.avg_damage || 0) + '</span><i>ダメ</i>' +
+      '</div>' +
+    '</div>').join('');
+
+  return '<div class="sec">構成でしぼる</div>' +
+    '<div class="card"><div class="sub">レジェンドを<b style="color:var(--ink2)">2体まで</b>選ぶと、' +
+      'それを含む構成だけを出します。もう一度押すと外れます。</div>' +
+      '<div class="cfbar">' + buttons + '</div></div>' +
+    (hit.length
+      ? '<div class="card" style="margin-top:8px">' + rows +
+        (hit.length > 20 ? '<div class="sub" style="margin-top:8px">ほか' + (hit.length - 20) + '件</div>' : '') +
+        '</div>'
+      : '<div class="card" style="margin-top:8px"><div class="sub">' +
+        'その組み合わせで <span class="mono" style="color:var(--ink2)">' + d.compo_min_games +
+        '戦</span> 以上たまった構成はまだありません。</div></div>');
 }
 
 // ===================================================================
@@ -708,6 +773,18 @@ function render(){
   else                         app.innerHTML = renderPerson();
 
   bindChips();
+  app.querySelectorAll('[data-cf]').forEach(b => {
+    b.onclick = () => {
+      const id = b.dataset.cf;
+      const cur = S.compoPick.slice();
+      const at = cur.indexOf(id);
+      if(at >= 0) cur.splice(at, 1);
+      else if(cur.length < 2) cur.push(id);
+      else { toast('選べるのは2体までです'); return; }
+      S.compoPick = cur;
+      render();
+    };
+  });
   app.querySelectorAll('.mtab[data-m]').forEach(b => {
     b.onclick = () => { S.metric = b.dataset.m; render(); };
   });

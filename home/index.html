@@ -75,6 +75,16 @@
   .bfoot span{ font-size:9.5px; color:rgba(36,28,82,.55); }
 
   /* ---- カード・見出し ---- */
+  /* ---- 月初の表彰バナー ---- */
+  .mbanner{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    width:calc(100% - 36px); margin:16px 18px 0; padding:14px 16px;
+    background:var(--yellow); color:var(--invert); border:0; border-radius:16px;
+    transform:rotate(-1.4deg); cursor:pointer; text-align:left;
+  }
+  .mbanner .mb1{ font-family:'Dela Gothic One',sans-serif; font-size:14.5px; }
+  .mbanner .mb2{ font-size:10.5px; line-height:1.6; margin-top:4px; color:rgba(36,28,82,.75); }
+
   .card{ background:var(--card); border-radius:18px; padding:15px; margin:0 18px 10px; }
   .sec{ font-family:'Dela Gothic One',sans-serif; font-size:15px; margin:24px 18px 10px; }
   .sechead{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:24px 18px 10px; }
@@ -528,6 +538,25 @@ function render(){
       '</button>');
   }
 
+  // --- 月初の表彰バナー ---
+  //
+  // 月間表彰は月が変わった瞬間に確定するが、誰も見に行かない。
+  // 月の最初の1週間だけ、ホームから入口を出す。
+  // 期間限定なのは、常設すると「いつもある物」になって押されなくなるため。
+  const today = new Date();
+  if(today.getDate() <= 7){
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const label = (lastMonth.getMonth() + 1) + '月';
+    parts.push(
+      '<button class="mbanner" id="toAwards">' +
+        '<div>' +
+          '<div class="mb1">' + label + 'の表彰が出ました</div>' +
+          '<div class="mb2">暴虐王・殺人王・復活王ほか5部門。取れましたか？</div>' +
+        '</div>' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#241C52" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M5 12h13"></path><path d="M12.5 6.5L19 12l-6.5 5.5"></path></svg>' +
+      '</button>');
+  }
+
   if(!h.session){
     // 確定ぶんが1試合も無い。看板は出しようがないので、やることを書く
     parts.push(
@@ -636,6 +665,9 @@ function noneDesc(id){
 }
 
 function bind(){
+  const ta = document.getElementById('toAwards');
+  if(ta) ta.onclick = () => { location.href = '../ranking/?view=awards'; };
+
   const go = id => { const e = document.getElementById(id); if(e) e.onclick = () => { location.href = '../record/'; }; };
   go('toRecord'); go('toRecord2');
   const sa = document.getElementById('showAll');
