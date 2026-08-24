@@ -202,6 +202,24 @@
   .bslot.empty .leg{ color:var(--ink4); font-family:'RocknRoll One',sans-serif; font-size:11px; }
   .bslot.stranger{ opacity:.5; cursor:default; border-style:dotted; }
   .bslot.filled{ border-color:var(--purple); }
+
+  /* 送る前の確認一覧。何がどう変わるかを1行ずつ出す */
+  .clist{ margin-top:14px; max-height:46vh; overflow-y:auto; }
+  .crow{
+    display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+    padding:10px 2px; border-bottom:1px solid var(--line);
+  }
+  .crow:last-child{ border-bottom:0; }
+  .cseq{
+    font-family:'Roboto Mono',monospace; font-weight:700; font-size:10px; letter-spacing:-.02em;
+    color:var(--ink4); background:var(--sunken); border-radius:6px; padding:3px 7px; flex:none;
+  }
+  .cwho{ font-size:12.5px; color:var(--ink2); flex:none; }
+  .cval{ margin-left:auto; display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .cval .from{ color:var(--ink4); text-decoration:line-through; }
+  .cval .arw{ color:var(--ink4); font-size:11px; }
+  .cval .to{ font-family:'Dela Gothic One',sans-serif; font-size:13px; color:var(--lime); }
+  .cval .to.blank{ color:var(--red); font-family:'RocknRoll One',sans-serif; font-size:12px; }
   .bbar{
     position:sticky; bottom:calc(70px + env(safe-area-inset-bottom)); z-index:15;
     background:var(--ground); padding:10px 18px calc(12px + env(safe-area-inset-bottom));
@@ -1429,9 +1447,77 @@ function matchFilled(m){
   return m.entries.filter(e => !e.is_stranger).every(e => !!S.draft[e.entry_id]);
 }
 
+/**
+ * 「上と同じ構成にする」の中身。**席ではなく「人」で写す。**
+ *
+ * 以前は card_slot（左・中央・右）で対応させていた。
+ * リザルト画面の並びは試合ごとに変わるので、
+ * **別人のキャラが割り当てられる**（しかも画面上は自然に見えるので気づけない）。
+ * 中央は撮った人で固定だが、左右は固定ではない。
+ *
+ * draft を直接書き換え、何枠写したかを返す。
+ * 画面に触らない純粋な処理にしてあるので、単体で検証できる。
+ *
+ * @param {Object} prev  前の試合（entries を持つ）
+ * @param {Object} cur   いまの試合
+ * @param {Object} draft entry_id → legend_id の下書き。ここを書き換える
+ * @return {{copied:number, notThere:number}}
+ */
+function copySameComposition(prev, cur, draft){
+  const byAcc = {};
+  (prev.entries || []).forEach(pe => {
+    if(pe.is_stranger) return;
+    const acc = String(pe.account_id || '');
+    if(!acc) return;
+    // 同じアカウントが2枠にいる異常データは、対応が決められないので写さない
+    byAcc[acc] = (byAcc[acc] === undefined) ? (draft[pe.entry_id] || '') : null;
+  });
+
+  let copied = 0, notThere = 0;
+  (cur.entries || []).forEach(ce => {
+    if(ce.is_stranger) return;
+    const acc = String(ce.account_id || '');
+    const v = acc ? byAcc[acc] : undefined;
+    if(v === undefined || v === null){ notThere++; return; }  // 前の試合にいない／曖昧
+    if(!v) return;                                            // 前も空欄。触らない
+    draft[ce.entry_id] = v;
+    copied++;
+  });
+
+  return { copied, notThere };
+}
+
+/**
+ * シートの値と手元の下書きが食い違っている枠。これが「送るもの」。
+ *
+ * **空欄に戻す変更も含める。**以前は値が入っている枠しか送っていなかったので、
+ * 間違って入れたキャラを消す手段が無かった。
+ */
+function bulkChanges(){
+  const legById = {}; (S.masters.legends || []).forEach(l => legById[l.legend_id] = l);
+  const name = id => id ? (legById[id] ? legById[id].name_ja : id) : '';
+  const out = [];
+  S.bulk.matches.forEach(m => m.entries.forEach(e => {
+    if(e.is_stranger) return;
+    const to = S.draft[e.entry_id] || '';
+    const from = e.legend_id || '';
+    if(to === from) return;
+    out.push({
+      entry_id: e.entry_id,
+      seq: m.seq,
+      who: e.person_name || e.raw_name || '(名前不明)',
+      from: name(from),
+      to: name(to),
+      legend_id: to
+    });
+  }));
+  return out;
+}
+
 function renderBulk(){
   const legById = {}; (S.masters.legends || []).forEach(l => legById[l.legend_id] = l);
   const c = bulkCounts();
+  const ch = bulkChanges();
 
   const body = S.bulk.matches.map((m, i) => {
     const prev = S.bulk.matches[i - 1];
@@ -1475,9 +1561,8 @@ function renderBulk(){
      </div>` +
     body +
     `<div class="bbar">
-       <button class="btn" id="bulkGo" ${c.done === 0 ? 'disabled' : ''}>
-         ${c.done === c.need ? `一括反映（${c.need}枠 / ${S.bulk.matches.length}試合）`
-                             : `一括反映（${c.done}枠ぶんだけ・残り${c.need - c.done}）`}
+       <button class="btn" id="bulkGo" ${ch.length === 0 ? 'disabled' : ''}>
+         ${ch.length ? `変更を確かめて送る（${ch.length}枠）` : '変えたところがありません'}
        </button>
      </div>`;
 
@@ -1491,46 +1576,81 @@ function renderBulk(){
     b.onclick = () => {
       const i = Number(b.dataset.same);
       const prev = S.bulk.matches[i - 1], cur = S.bulk.matches[i];
-      // 席（左・中央・右）ごとに写す。人が入れ替わっていても席の並びは同じ
-      prev.entries.forEach(pe => {
-        const ce = cur.entries.filter(x => x.card_slot === pe.card_slot)[0];
-        if(!ce || ce.is_stranger) return;
-        S.draft[ce.entry_id] = S.draft[pe.entry_id] || '';
-      });
+
+      const r = copySameComposition(prev, cur, S.draft);
       renderBulk();
+      toast(r.notThere
+        ? `${r.copied}枠を写しました（${r.notThere}枠は前の試合にいないので空欄のまま）`
+        : `${r.copied}枠を写しました`);
     };
   });
   const go = document.getElementById('bulkGo');
   if(go) go.onclick = sendBulkLegends;
 }
 
+/**
+ * 送る前に、何がどう変わるかを全部見せる。
+ *
+ * まとめて直す画面は一度に何十枠も動かせるので、
+ * 「上と同じ構成にする」を押し間違えたことに気づけないまま送れてしまう。
+ * 送信は取り消せない（履歴には残るが、戻すのは手作業）ので、ここで一度止める。
+ */
 function sendBulkLegends(){
   if(!S.key){ toast('編集キーが要ります。登録タブの設定で入れてください', true); return; }
-  const items = [];
-  S.bulk.matches.forEach(m => m.entries.forEach(e => {
-    if(e.is_stranger) return;
-    const id = S.draft[e.entry_id] || '';
-    if(id && id !== e.legend_id) items.push({ entry_id: e.entry_id, legend_id: id });
-  }));
-  if(!items.length){ toast('変わったところがありません'); return; }
+  const ch = bulkChanges();
+  if(!ch.length){ toast('変えたところがありません'); return; }
 
-  const btn = document.getElementById('bulkGo');
-  if(btn){ btn.disabled = true; btn.textContent = '送っています…'; }
+  const rows = ch.map(c => `
+    <div class="crow">
+      <span class="cseq">${c.seq}戦目</span>
+      <span class="cwho">${esc(c.who)}</span>
+      <span class="cval">
+        <span class="from">${c.from ? esc(c.from) : '空欄'}</span>
+        <span class="arw">→</span>
+        <span class="to ${c.to ? '' : 'blank'}">${c.to ? esc(c.to) : '空欄にする'}</span>
+      </span>
+    </div>`).join('');
 
-  apiPost({ action:'bulk_update_legends', items })
-    .then(r => {
-      if(!r.ok) throw new Error(r.error || '反映できませんでした');
-      toast(r.changed + '枠を反映しました');
-      // 送った内容を手元にも反映して、押し直しても二重に送らないようにする
-      S.bulk.matches.forEach(m => m.entries.forEach(e => { e.legend_id = S.draft[e.entry_id] || ''; }));
-      S.list = null; S.details = {};
-      renderBulk();
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  sheet.innerHTML = `
+    <div class="sheetinner">
+      <div class="spread">
+        <span class="dela" style="font-size:17px">これで送ります</span>
+        <button class="btn ghost" style="width:auto;height:40px;padding:0 16px" id="cclose">やめる</button>
+      </div>
+      <div class="sub" style="margin-top:10px">${ch.length}枠が変わります。<b>ここに出ていない枠は触りません。</b></div>
+      <div class="clist">${rows}</div>
+      <button class="btn limeline" id="cgo" style="margin-top:14px">送る</button>
+    </div>`;
+  document.body.appendChild(sheet);
+
+  const close = () => sheet.remove();
+  sheet.querySelector('#cclose').onclick = close;
+  sheet.onclick = ev => { if(ev.target === sheet) close(); };
+
+  sheet.querySelector('#cgo').onclick = () => {
+    const go = sheet.querySelector('#cgo');
+    go.disabled = true; go.textContent = '送っています…';
+
+    apiPost({
+      action: 'bulk_update_legends',
+      items: ch.map(c => ({ entry_id: c.entry_id, legend_id: c.legend_id }))
     })
-    .catch(err => {
-      if(btn) btn.disabled = false;
-      renderBulk();
-      toast('反映できませんでした：' + err.message, true, sendBulkLegends);
-    });
+      .then(r => {
+        if(!r.ok) throw new Error(r.error || '反映できませんでした');
+        close();
+        toast(r.changed + '枠を反映しました');
+        // 送った内容を手元にも反映して、押し直しても二重に送らないようにする
+        S.bulk.matches.forEach(m => m.entries.forEach(e => { e.legend_id = S.draft[e.entry_id] || ''; }));
+        S.list = null; S.details = {};
+        renderBulk();
+      })
+      .catch(err => {
+        go.disabled = false; go.textContent = '送る';
+        toast('反映できませんでした：' + err.message, true);
+      });
+  };
 }
 
 // ===================================================================
