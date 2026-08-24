@@ -33,7 +33,10 @@
   --mono:'Roboto Mono',ui-monospace,monospace;
 }
 *{ box-sizing:border-box; }
-html{ -webkit-text-size-adjust:100%; }
+/* 表紙の光（.glow）は左右に -30% はみ出して描いている。
+   body だけに overflow-x:hidden を置いても html 側は横に伸びるので、
+   スマホで画面が横に振れる。両方に置いて初めて止まる。 */
+html{ -webkit-text-size-adjust:100%; overflow-x:hidden; }
 body{
   margin:0; background:var(--ground); color:var(--ink);
   font-family:var(--rr); font-size:16px; line-height:1.85;
