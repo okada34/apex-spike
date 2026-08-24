@@ -422,7 +422,16 @@ function apiGet(params){
     .catch(err => { NET_OK = false; updateFreshBar(); throw err; })
     .then(r => {
       if(!r.ok){ NET_OK = false; updateFreshBar(); throw new Error('HTTP ' + r.status); }
-      return r.json();
+      // Googleの一時的な不調で、JSONではなくエラーページが返ることがある
+      // （性能試験のあいだ、実際に何度も起きた）。読めないなら「届かなかった」扱いにする。
+      // ここで r.json() を直に返すと、利用者には構文エラーがそのまま出る
+      return r.text().then(t => {
+        try { return JSON.parse(t); }
+        catch (e) {
+          NET_OK = false; updateFreshBar();
+          throw new Error("サーバーからの応答を読めませんでした");
+        }
+      });
     })
     .then(j => {
       NET_OK = true; updateFreshBar();
@@ -609,7 +618,46 @@ function ingestBlock(){
         : '') +
     '</div>';
 
-  return cacheBlock +
+  // 称号の再集計が落ちていないか。
+  // **落ちても画面には何も出ない**（称号が静かに古くなるだけ）ので、ここだけが手がかり
+  const a2 = (S.data.admin && S.data.admin.award_sync) || null;
+  const syncBlock = !a2 ? '' :
+    '<div class="sechead"><div class="t">称号の再集計</div></div>' +
+    '<div class="card' + (a2.state === 'failing' ? ' bad' : '') + '">' +
+      '<div class="acc"><span class="n" style="font-size:12px">状態</span>' +
+        '<span class="u" style="font-size:12px;color:' +
+          (a2.state === 'failing' ? 'var(--red)'
+            : a2.state === 'slow' ? 'var(--yellow)'
+            : a2.state === 'recovered' ? 'var(--yellow)'
+            : a2.state === 'unknown' ? 'var(--ink3)' : 'var(--lime)') + '">' +
+        (a2.state === 'failing' ? '失敗したままです'
+          : a2.state === 'slow' ? '時間がかかっています'
+          : a2.state === 'recovered' ? '復旧しました'
+          : a2.state === 'unknown' ? 'まだ動いていません' : '正常') +
+        '</span></div>' +
+      '<div class="acc"><span class="n" style="font-size:12px">最後に成功</span>' +
+        '<span class="u" style="font-size:12px">' + (a2.last_ok_at ? esc(String(a2.last_ok_at).slice(0,16).replace('T',' ')) : '—') + '</span></div>' +
+      (a2.last_ms
+        ? '<div class="acc"><span class="n" style="font-size:12px">前回の所要</span>' +
+          '<span class="u" style="font-size:12px;color:' + (a2.state === 'slow' ? 'var(--yellow)' : 'inherit') + '">' +
+          (a2.last_ms / 1000).toFixed(1) + '秒</span></div>'
+        : '') +
+      (a2.last_error_at
+        ? '<div class="acc"><span class="n" style="font-size:12px">最後に失敗</span>' +
+          '<span class="u" style="font-size:12px;color:var(--red)">' + esc(String(a2.last_error_at).slice(0,16).replace('T',' ')) + '</span></div>' +
+          '<div class="sub" style="margin-top:8px">' + esc(String(a2.last_error || '')) + '</div>'
+        : '') +
+      (a2.state === 'failing'
+        ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
+          '称号が古いまま止まっている可能性があります。</div>'
+        : a2.state === 'slow'
+        ? '<div class="sub" style="margin-top:9px;color:var(--yellow)">' +
+          '5分ごとの処理は6分で打ち切られます。ここが伸び続けると、' +
+          'いずれ称号が黙って古くなります。</div>'
+        : '') +
+    '</div>';
+
+  return cacheBlock + syncBlock +
     '<div class="sechead"><div class="t">取り込みの結果</div></div>' +
     '<div class="card">' + (rows || '<div class="sub">まだありません</div>') + '</div>' +
     fails;

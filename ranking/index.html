@@ -423,7 +423,16 @@ function apiGet(params){
     .catch(err => { NET_OK = false; updateFreshBar(); throw err; })
     .then(r => {
       if(!r.ok){ NET_OK = false; updateFreshBar(); throw new Error('HTTP ' + r.status); }
-      return r.json();
+      // Googleの一時的な不調で、JSONではなくエラーページが返ることがある
+      // （性能試験のあいだ、実際に何度も起きた）。読めないなら「届かなかった」扱いにする。
+      // ここで r.json() を直に返すと、利用者には構文エラーがそのまま出る
+      return r.text().then(t => {
+        try { return JSON.parse(t); }
+        catch (e) {
+          NET_OK = false; updateFreshBar();
+          throw new Error("サーバーからの応答を読めませんでした");
+        }
+      });
     })
     .then(j => {
       NET_OK = true; updateFreshBar();
