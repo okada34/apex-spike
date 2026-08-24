@@ -234,19 +234,108 @@ const store = {
  * タブを切り替えるたびにGASを待つと毎回2〜3秒かかるので、前回の内容で先に描く。
  * 中身は数秒後に裏で最新へ差し替わる。
  */
-const CACHE_PREFIX = 'apexCache:';
+// 版を上げると、古い形の控えを丸ごと無視できる。中身の作りを変えたときに使う
+const CACHE_PREFIX = 'apexCache:v2:';
+const CACHE_STALE_MS = 20 * 60 * 1000;        // これを超えたら「古いかも」と伝える
+const CACHE_MAX_MS   = 24 * 60 * 60 * 1000;   // これを超えたら、そもそも使わない
+
+/** いま画面に出している控えの鍵。鮮度の表示に使う */
+let SHOWN_KEY = null;
+/** 直近の通信が成功したか。失敗したまま古い数字を出し続けないための印 */
+let NET_OK = true;
+
+/**
+ * 控えを読む。**保存した時刻も必ず見る。**
+ *
+ * 以前は時刻を保存していたのに読んでいなかった。そのため通信に失敗すると、
+ * 何日前の数字でも現在値の顔をして出ていた（どこにも「いつのものか」が出ない）。
+ */
 function cacheGet(key){
   try{
     const raw = localStorage.getItem(CACHE_PREFIX + key);
     if(!raw) return null;
     const o = JSON.parse(raw);
-    return (o && o.data) ? o.data : null;
+    if(!o || !o.data) return null;
+    if(typeof o.t === 'number' && Date.now() - o.t > CACHE_MAX_MS) return null;
+    SHOWN_KEY = key;
+    updateFreshBar();
+    return o.data;
   }catch(e){ return null; }
 }
+
+/** その控えを保存してからの経過ミリ秒。分からなければ null */
+function cacheAge(key){
+  try{
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    return (o && typeof o.t === 'number') ? Date.now() - o.t : null;
+  }catch(e){ return null; }
+}
+
 function cacheSet(key, data){
   try{ localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), data: data })); }
   catch(e){ /* 容量超過などは無視。次回また取りに行くだけ */ }
+  SHOWN_KEY = key;
+  NET_OK = true;
+  updateFreshBar();
 }
+
+/**
+ * 「いつの数字か」の帯。
+ *
+ * 出すのは**困っているときだけ**にする。
+ *   - 取り直せなかった（電波が無い・サーバーが落ちている）
+ *   - 控えが20分より古い
+ * うまくいっているときは何も出さない。常時出すと、ただの飾りになって読まれなくなる。
+ */
+function updateFreshBar(){
+  const age = SHOWN_KEY ? cacheAge(SHOWN_KEY) : null;
+  const old = age !== null && age > CACHE_STALE_MS;
+  if(NET_OK && !old){ removeFreshBar(); return; }
+
+  let el = document.getElementById('freshbar');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'freshbar';
+    el.style.cssText =
+      'position:fixed;left:0;right:0;top:0;z-index:60;padding:9px 14px;' +
+      'font-family:inherit;font-size:12.5px;line-height:1.5;text-align:center;' +
+      'background:#3A2A1A;color:#FFE646;border-bottom:1px solid #6B4E1E';
+    document.body.appendChild(el);
+  }
+  el.textContent = (NET_OK ? '⚠ 古い数字かもしれません' : '⚠ つながっていません') +
+    '（最終更新 ' + fmtAgo(age) + '）';
+  // 帯のぶんだけ本文を下げる。上に重ねるとヘッダーが隠れて操作できなくなる
+  document.body.style.paddingTop = el.offsetHeight + 'px';
+}
+
+function removeFreshBar(){
+  const el = document.getElementById('freshbar');
+  if(el) el.remove();
+  document.body.style.paddingTop = '';
+}
+
+/** 経過時間を「◯分前」「◯時間前」にする。分からないときは「不明」 */
+function fmtAgo(ms){
+  if(ms === null || ms === undefined) return '不明';
+  const m = Math.floor(ms / 60000);
+  if(m < 1) return 'たった今';
+  if(m < 60) return m + '分前';
+  const h = Math.floor(m / 60);
+  if(h < 24) return h + '時間前';
+  return Math.floor(h / 24) + '日前';
+}
+
+// 版を上げたときに残る古い控えを片づける。放っておくと容量を食うだけ
+(function purgeOldCache(){
+  try{
+    for(let i = localStorage.length - 1; i >= 0; i--){
+      const k = localStorage.key(i);
+      if(k && k.indexOf('apexCache:') === 0 && k.indexOf(CACHE_PREFIX) !== 0) localStorage.removeItem(k);
+    }
+  }catch(e){}
+})();
 
 /**
  * 他の画面ぶんを裏で取っておく。
@@ -310,9 +399,16 @@ function apiGet(params){
   const k = store.get(LS.key) || '';
   if(k) p.key = k;
   const q = new URLSearchParams(p).toString();
+  // 「サーバーに届かなかった」と「届いたが断られた」を分ける。
+  // 前者だけがオフライン。AUTHで弾かれたのを「つながっていません」と出すと嘘になる
   return fetch(S.url + '?' + q, { method:'GET' })
-    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .catch(err => { NET_OK = false; updateFreshBar(); throw err; })
+    .then(r => {
+      if(!r.ok){ NET_OK = false; updateFreshBar(); throw new Error('HTTP ' + r.status); }
+      return r.json();
+    })
     .then(j => {
+      NET_OK = true; updateFreshBar();
       if(!j.ok){
         const e = new Error(j.error || '取得に失敗しました');
         e.code = j.code || '';
