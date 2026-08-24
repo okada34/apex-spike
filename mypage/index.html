@@ -479,11 +479,20 @@ function whoBar(){
 function legendCard(l, withRank){
   const color = CLASS_COLOR[l.cls] || 'var(--ink3)';
   const clsJa = CLASS_JA[l.cls] || '';
+
+  // 何戦ぶんの平均かだけでは、どこまで信じてよいか分からない。
+  // 段の名前（暫定／参考値／傾向アリ／クセ判明）を数字のすぐ隣に置く
+  const t = (S.data.tiers || [])[l.tier_index];
+  const tierChip = t
+    ? '<span style="margin-left:7px;color:' + (TIER_COLORS[l.tier_index] || 'var(--ink4)') + '">'
+      + esc(t.short) + '</span>'
+    : '';
+
   let body =
     '<div class="lh"><div style="display:flex;align-items:baseline;gap:8px">' +
       '<span class="ln">' + esc(l.name) + '</span>' +
       '<span class="lc" style="color:' + color + '">' + esc(clsJa) + '</span></div>' +
-      '<span class="lgm">' + l.games + '戦</span></div>';
+      '<span class="lgm">' + l.games + '戦' + tierChip + '</span></div>';
 
   if(!withRank){
     if(!l.measurable){
