@@ -127,6 +127,15 @@
   }
 
   /* ---- 画面下に貼り付く操作バー ---- */
+  /* 確信度が低い項目の確認バー */
+  .ackbar{
+    margin:14px 18px 0; background:var(--card); border-left:4px solid var(--red);
+    border-radius:0 14px 14px 0; padding:14px 16px;
+  }
+  .ackbar .at{ font-family:'Dela Gothic One',sans-serif; font-size:13.5px; }
+  .ackbar .ad{ font-size:11px; line-height:1.7; color:var(--ink3); margin-top:6px; }
+  .ackbar .btn{ margin-top:11px; }
+
   .actbar{
     position:sticky; bottom:calc(70px + env(safe-area-inset-bottom)); z-index:15; background:var(--ground);
     border-top:1px solid rgba(255,255,255,.09); padding:11px 18px 12px;
@@ -1061,6 +1070,20 @@ function renderDetail(){
     box.appendChild(d);
   });
 
+  // 「確信度が低い」項目がある間だけ出す確認バー。
+  // 直す必要は無いが、目を通したことを1回押してもらう
+  const softCount = Object.keys(S.softBad).length;
+  if(softCount > 0){
+    const ab = document.createElement('div');
+    ab.id = 'ackbar';
+    ab.className = 'ackbar';
+    ab.innerHTML =
+      '<div class="at">読み取りに自信のない数字が ' + softCount + ' 個あります</div>' +
+      '<div class="ad">スクショと見比べて、合っていればそのままで大丈夫です。違っていたら直してください。</div>' +
+      '<button class="btn ghost" data-ackall="1">ぜんぶ確認した</button>';
+    app.appendChild(ab);
+  }
+
   // 画面下に貼り付く操作バー
   const bar = document.createElement('div');
   bar.className = 'actbar';
@@ -1080,16 +1103,26 @@ function renderDetail(){
   });
   app.querySelectorAll('input[data-field]').forEach(bindNumberInput);
 
-  // 「確信度が低い」だけの赤は、触れば消える（直す必要はなく、目を通せばよい）
-  app.querySelectorAll('input[data-soft="1"]').forEach(i => {
-    i.addEventListener('focus', () => {
-      const box = i.closest('.fld');
-      if(!box || box.dataset.red !== '1') return;
-      S.ack[i.dataset.key] = true;
-      if(i.dataset.field === 'kills' || i.dataset.key === 'match.squad_total_kills'){ refreshKillRed(); return; }
-      box.classList.remove('bad'); box.dataset.red = 0;
-      refreshConfirmLook();
-    });
+  // 「確信度が低い」だけの赤は、**押して確認したときに消す。**
+  //
+  // 以前は入力欄にフォーカスしただけで消していた。
+  // スクロール中に指が触れただけでも消えるので、**見ていないのに「確認済み」**になる。
+  // 直す必要はなく目を通せばよい項目なので、ボタン1つに絞った。
+  app.querySelectorAll('[data-ackall]').forEach(b => {
+    b.onclick = () => {
+      app.querySelectorAll('input[data-soft="1"]').forEach(i => {
+        if(S.softBad[i.dataset.key]) S.ack[i.dataset.key] = true;
+      });
+      app.querySelectorAll('input[data-soft="1"]').forEach(i => {
+        const box = i.closest('.fld');
+        if(!box) return;
+        if(i.dataset.field === 'kills' || i.dataset.key === 'match.squad_total_kills') return;
+        box.classList.remove('bad'); box.dataset.red = 0;
+      });
+      refreshKillRed();
+      const bar = document.getElementById('ackbar');
+      if(bar) bar.remove();
+    };
   });
   // 辻褄の赤は、実際に合うまで消えない。入力のたびに数え直す
   app.querySelectorAll('input[data-field="kills"], input[data-key="match.squad_total_kills"]').forEach(i => {
