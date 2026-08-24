@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#241C52">
+<meta name="description" content="OKAPEX戦績アプリをスマホに入れる手順。4ステップで終わります。">
+<link rel="canonical" href="https://okada34.github.io/apex-spike/start/">
+<link rel="icon" href="https://okada34.github.io/apex-spike/icons/favicon-64.png">
+
+<!-- LINEやXに貼ったときの見え方 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="OKAPEX はじめかた">
+<meta property="og:description" content="OKAPEX戦績アプリをスマホに入れる手順。4ステップで終わります。">
+<meta property="og:url" content="https://okada34.github.io/apex-spike/start/">
+<meta property="og:image" content="https://okada34.github.io/apex-spike/icons/pwa-512x512.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<title>OKAPEX はじめかた</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=RocknRoll+One&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* アプリ本体と同じ世界。暗い一色に振り切る（アプリがダーク専用のため）。
+   明暗の切り替えは持たず、そのかわり全ての色を明示して、どの環境でも同じに見せる。 */
+:root{
+  --ground:#241C52; --card:#332A70; --sunken:#2E2559; --line:#493D96;
+  --purple:#7C5CFF; --yellow:#FFE646; --lime:#C8FF00; --red:#FF5470;
+  --ink:#FFFFFF; --ink2:#C6BCF2; --ink3:#A99CE0; --ink4:#8478C4; --invert:#241C52;
+  --dela:'Dela Gothic One','Hiragino Sans','Yu Gothic',sans-serif;
+  --rr:'RocknRoll One','Hiragino Sans','Yu Gothic',sans-serif;
+  --mono:'Roboto Mono',ui-monospace,monospace;
+}
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--rr); font-size:16px; line-height:1.85;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{ max-width:760px; margin:0 auto; padding:0 20px 100px; }
+p{ margin:0 0 1em; }
+strong{ color:var(--lime); font-weight:400; }
+em{ font-style:normal; color:var(--yellow); }
+code{
+  font-family:var(--mono); font-size:.86em; background:var(--sunken);
+  border:1px solid var(--line); border-radius:6px; padding:2px 7px; word-break:break-all;
+}
+a{ color:var(--lime); }
+a:focus-visible, button:focus-visible{ outline:3px solid var(--lime); outline-offset:3px; }
+
+/* ---------- 表紙 ---------- */
+.hero{ padding:76px 0 20px; text-align:center; }
+.mark{ width:96px; height:96px; margin:0 auto 26px; display:block; }
+.eyebrow{
+  font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.24em;
+  color:var(--ink4); text-transform:uppercase;
+}
+.hero h1{
+  font-family:var(--dela); font-weight:400; font-size:clamp(34px,8vw,56px);
+  line-height:1.2; margin:14px 0 18px; text-wrap:balance;
+}
+.hero h1 .ok{ color:var(--lime); }
+.hero .lead{ color:var(--ink2); font-size:17px; max-width:30em; margin:0 auto; }
+.meta{
+  display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:30px;
+}
+.chip{
+  font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.04em;
+  background:var(--sunken); border:1px solid var(--line); border-radius:20px;
+  padding:8px 15px; color:var(--ink2);
+}
+
+/* ---------- 黄色い看板（アプリと同じ device） ---------- */
+.board{
+  background:var(--yellow); color:var(--invert); border-radius:20px;
+  padding:22px 24px; transform:rotate(-1.4deg); margin:56px 0 30px;
+}
+.board .n{
+  font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.18em;
+  color:rgba(36,28,82,.6);
+}
+.board h2{
+  font-family:var(--dela); font-weight:400; font-size:clamp(22px,5vw,30px);
+  margin:4px 0 0; line-height:1.3; text-wrap:balance;
+}
+.board .sub{ font-size:14px; color:rgba(36,28,82,.78); margin-top:8px; }
+
+/* ---------- 手順の一段 ---------- */
+.step{ display:grid; grid-template-columns:56px 1fr; gap:20px; margin:0 0 44px; }
+.step .num{
+  font-family:var(--mono); font-weight:700; font-size:19px; color:var(--invert);
+  background:var(--lime); border-radius:14px; height:56px;
+  display:flex; align-items:center; justify-content:center;
+  transform:rotate(-1.4deg);
+}
+.step h3{
+  font-family:var(--dela); font-weight:400; font-size:20px; margin:12px 0 12px; line-height:1.45;
+}
+.step .body{ min-width:0; }
+
+/* ---------- 端末ごとの分岐 ---------- */
+.split{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:20px 0 8px; }
+@media (max-width:620px){ .split{ grid-template-columns:1fr; } }
+.os{ background:var(--card); border-radius:16px; padding:18px 20px; border-top:4px solid var(--purple); }
+.os.android{ border-top-color:var(--lime); }
+.os h4{
+  font-family:var(--dela); font-weight:400; font-size:15px; margin:0 0 12px;
+  display:flex; align-items:center; gap:9px;
+}
+.os ol{ margin:0; padding-left:1.2em; font-size:14.5px; color:var(--ink2); }
+.os li{ margin-bottom:9px; }
+.os li:last-child{ margin-bottom:0; }
+
+/* ---------- 注意・補足 ---------- */
+.note{
+  background:var(--card); border-left:4px solid var(--yellow); border-radius:0 14px 14px 0;
+  padding:16px 20px; margin:20px 0; font-size:14.5px; color:var(--ink2);
+}
+.note.warn{ border-left-color:var(--red); }
+.note .t{ color:var(--ink); font-family:var(--dela); font-size:14px; display:block; margin-bottom:7px; }
+
+/* ---------- スマホの画面（HTMLで再現） ---------- */
+.shots{ display:flex; gap:18px; flex-wrap:wrap; justify-content:center; margin:26px 0 8px; }
+.phone{
+  width:216px; background:#0E0A28; border-radius:24px; padding:8px;
+  box-shadow:0 14px 40px rgba(0,0,0,.5); flex:none;
+}
+.phone .screen{
+  background:var(--ground); border-radius:17px; overflow:hidden;
+  font-size:9px; line-height:1.6;
+}
+.phone .bar{
+  height:22px; background:#120D30; display:flex; align-items:center; padding:0 9px;
+  font-family:var(--mono); font-size:7.5px; color:var(--ink4); gap:5px;
+}
+.phone .bar .url{
+  flex:1; background:#241C52; border-radius:9px; padding:2px 7px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.phone .pad{ padding:11px 10px 12px; }
+.cap{
+  text-align:center; font-family:var(--mono); font-size:11px; color:var(--ink4);
+  margin-top:11px; letter-spacing:.06em;
+}
+
+/* 画面の中身の部品（アプリの見た目を縮めたもの） */
+.m-h{ font-family:var(--dela); font-size:11px; margin-bottom:9px; }
+.m-lbl{ font-size:8px; color:var(--ink3); margin:9px 0 3px; }
+.m-in{
+  background:var(--sunken); border:1px solid var(--line); border-radius:7px;
+  padding:6px 8px; color:var(--ink); font-family:var(--mono); font-size:7.5px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.m-in.sel{ display:flex; justify-content:space-between; align-items:center; font-family:var(--rr); font-size:9px; }
+.m-in.dots{ letter-spacing:2px; }
+.m-btn{
+  background:var(--purple); border-radius:9px; text-align:center; padding:8px;
+  font-family:var(--dela); font-size:9.5px; margin-top:11px;
+}
+.m-btn.lime{ background:var(--lime); color:var(--invert); }
+.m-hint{ font-size:7.5px; color:var(--ink4); margin-top:4px; line-height:1.5; }
+.m-toast{
+  background:var(--lime); color:var(--invert); border-radius:9px; padding:7px 9px;
+  font-family:var(--dela); font-size:8.5px; text-align:center; margin-top:11px;
+}
+.m-tabs{
+  display:flex; background:var(--card); padding:6px 0; margin-top:12px;
+  border-radius:0 0 8px 8px;
+}
+.m-tabs div{ flex:1; text-align:center; font-size:7px; color:var(--ink4); }
+.m-tabs div.on{ color:var(--invert); }
+.m-tabs div.on span{
+  background:var(--lime); border-radius:5px; padding:3px 6px; display:inline-block;
+  transform:rotate(-1.4deg);
+}
+.m-board{
+  background:var(--yellow); color:var(--invert); border-radius:10px;
+  padding:10px 11px; transform:rotate(-1.4deg);
+}
+.m-board .bt{ font-family:var(--dela); font-size:12px; }
+.m-row{
+  display:flex; align-items:center; gap:6px; padding:7px 0;
+  border-bottom:1.5px solid rgba(36,28,82,.16);
+}
+.m-row:last-child{ border-bottom:0; }
+.m-tag{ background:var(--invert); color:var(--yellow); border-radius:9px; padding:1px 5px; font-size:6.5px; }
+.m-nm{ font-family:var(--dela); font-size:10px; }
+.m-v{ margin-left:auto; font-family:var(--mono); font-weight:700; font-size:11px; }
+
+/* ---------- チェックリスト ---------- */
+.done{ list-style:none; padding:0; margin:22px 0 0; }
+.done li{
+  display:flex; gap:13px; align-items:flex-start; padding:14px 0;
+  border-bottom:1px solid var(--line); font-size:15px;
+}
+.done li:last-child{ border-bottom:0; }
+.done .box{
+  width:22px; height:22px; border:2px solid var(--lime); border-radius:6px; flex:none; margin-top:3px;
+}
+
+/* ---------- 困ったとき ---------- */
+.tbl{ width:100%; border-collapse:collapse; font-size:14.5px; margin-top:8px; }
+.tbl th, .tbl td{ text-align:left; padding:14px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+.tbl th{
+  font-family:var(--mono); font-weight:700; font-size:11px; letter-spacing:.12em;
+  color:var(--ink4); text-transform:uppercase; border-bottom-width:2px;
+}
+.tbl td:first-child{ color:var(--yellow); width:38%; }
+.tbl td{ color:var(--ink2); }
+.scroll{ overflow-x:auto; }
+
+.end{
+  margin-top:66px; padding-top:30px; border-top:1px solid var(--line);
+  text-align:center; color:var(--ink4); font-size:13.5px;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M50 4 L99 82 L76 82 L50 40 L24 82 L1 82 Z" fill="#FFE646"/>
+      <path d="M50 55 L66 82 L34 82 Z" fill="#FFE646"/>
+    </svg>
+    <div class="eyebrow">Setup Guide</div>
+    <h1><span class="ok">OK</span>APEX<br>はじめかた</h1>
+    <p class="lead">スマホに入れて、名前を選ぶだけ。<strong>3分で終わります。</strong><br>
+    途中でつまずいても大丈夫。全部書いてあります。</p>
+    <div class="meta">
+      <span class="chip">所要 3分</span>
+      <span class="chip">iPhone / Android</span>
+      <span class="chip">アプリストア不要</span>
+      <span class="chip">無料</span>
+    </div>
+  </div>
+
+  <!-- ============ 用意するもの ============ -->
+  <div class="board">
+    <div class="n">BEFORE YOU START</div>
+    <h2>先に手元に用意するもの</h2>
+    <div class="sub">これが揃っていれば、あとは流れるように終わります。</div>
+  </div>
+
+  <ul class="done">
+    <li><span class="box"></span><span><strong>スマホ</strong>（iPhoneでもAndroidでもOK）。パソコンは要りません。</span></li>
+    <li><span class="box"></span><span><strong>アプリのURL</strong>。おかちゃんマンから届いているはずです。</span></li>
+    <li><span class="box"></span><span><strong>編集キー</strong>。数字と英字が並んだ長い文字列です。<br>
+      <span style="color:var(--ink4);font-size:13.5px">※ おかちゃんマンからLINEで送られています。<br>
+      ※ 受け取っていない人もいます。無くても戦績は全部見られます。</span></span></li>
+  </ul>
+
+  <div class="note">
+    <span class="t">キーはコピーできる状態にしておいてください</span>
+    手で打つと、まず間違えます。実際に <code>B</code> が <code>8</code> に化けて、原因究明に1時間かかったことがあります。
+    LINEなどに貼っておいて、<strong>長押しでコピー</strong>できるようにしておくのが確実です。
+  </div>
+
+  <!-- ============ STEP 1 ============ -->
+  <div class="board">
+    <div class="n">STEP 1 — 3</div>
+    <h2>アプリを開く</h2>
+    <div class="sub">まだ何もインストールしません。ふつうにWebページを開くだけです。</div>
+  </div>
+
+  <div class="step">
+    <div class="num">1</div>
+    <div class="body">
+      <h3>ブラウザでURLを開く</h3>
+      <p>届いたURLをタップします。<strong>ホーム画面が出れば成功です。</strong></p>
+      <div class="note warn">
+        <span class="t">LINEから開くと、あとで詰まります</span>
+        LINEやX（Twitter）の中でURLをタップすると、<em>そのアプリの中にある簡易ブラウザ</em>が開きます。
+        そこからだと、<strong>STEP 4 のホーム画面への追加ができません。</strong>
+        これは iPhone も Android も同じです。<br><br>
+        <strong>iPhone は Safari、Android は Chrome</strong> で開いてください。
+        すでにLINEから開いてしまっていたら、画面のすみにある
+        <code>…</code> や <code>⋮</code> を押して
+        <strong>「Safariで開く」／「Chromeで開く」</strong> を選び直せば大丈夫です。
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">2</div>
+    <div class="body">
+      <h3>下のタブから「登録」を押す</h3>
+      <p>画面のいちばん下に、5つのタブが並んでいます。<strong>いちばん右の「登録」</strong>を押してください。</p>
+
+      <div class="shots">
+        <div class="phone">
+          <div class="screen">
+            <div class="bar"><span>◐</span><span class="url">okada34.github.io/apex-spike/</span><span>⋮</span></div>
+            <div class="pad">
+              <div class="m-h">サークル戦績</div>
+              <div class="m-board">
+                <div class="bt">今日の3王</div>
+                <div class="m-row"><span class="m-tag">キル王</span><span class="m-nm">マン坊</span><span class="m-v">12</span></div>
+                <div class="m-row"><span class="m-tag">ダメージ王</span><span class="m-nm">おかちゃん</span><span class="m-v">8,240</span></div>
+              </div>
+            </div>
+            <div class="m-tabs">
+              <div>ホーム</div><div>ランキング</div><div>サークル</div><div>マイページ</div>
+              <div class="on"><span>登録</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">↑ この右下の「登録」を押す</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">3</div>
+    <div class="body">
+      <h3>設定の画面が出たら、名前を選ぶ</h3>
+      <p>はじめて開いたときだけ、この画面が出ます。<strong>上のURL欄は最初から埋まっています。触らないでください。</strong></p>
+
+      <div class="shots">
+        <div class="phone">
+          <div class="screen">
+            <div class="bar"><span>◐</span><span class="url">…/apex-spike/record/</span><span>⋮</span></div>
+            <div class="pad">
+              <div class="m-h">設定</div>
+              <div class="m-lbl">WebアプリのURL</div>
+              <div class="m-in">https://script.google.com/…</div>
+              <div class="m-hint">最初から入っています。触らなくて大丈夫です。</div>
+              <div class="m-lbl">編集キー</div>
+              <div class="m-in dots">••••••••</div>
+              <div class="m-lbl">あなたは誰？</div>
+              <div class="m-in sel"><span>ダークネス</span><span style="color:var(--ink4)">▾</span></div>
+              <div class="m-btn">保存する</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">↑ 触るのは下の2つだけ</div>
+
+      <p style="margin-top:26px"><em>やることは3つ。</em></p>
+      <ul class="done">
+        <li><span class="box"></span><span><strong>編集キー</strong>を貼り付ける<br>
+          <span style="color:var(--ink4);font-size:13.5px">右にある「表示」を押すと、打ち間違いを目で確認できます。持っていない人は空のままでOK。</span></span></li>
+        <li><span class="box"></span><span><strong>「あなたは誰？」</strong>で自分の名前を選ぶ</span></li>
+        <li><span class="box"></span><span><strong>「保存する」</strong>を押す</span></li>
+      </ul>
+
+      <div class="note">
+        <span class="t">こう出たら成功です</span>
+        <div style="background:var(--lime);color:var(--invert);border-radius:10px;padding:11px 14px;
+                    font-family:var(--dela);font-size:14px;text-align:center;margin-top:6px">
+          保存しました。編集キーも確認できました
+        </div>
+        <div style="margin-top:14px">赤い色で「編集キーが違います」と出たら、キーが間違っています。
+        <strong>コピーし直して、もう一度</strong>やってください。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 4-5 ============ -->
+  <div class="board">
+    <div class="n">STEP 4 — 5</div>
+    <h2>ホーム画面にアイコンを置く</h2>
+    <div class="sub">ここまで来れば、あとは仕上げです。ふつうのアプリと同じように使えるようになります。</div>
+  </div>
+
+  <div class="step">
+    <div class="num">4</div>
+    <div class="body">
+      <h3>ホーム画面に追加する</h3>
+      <p>お使いの端末で手順が違います。<strong>自分の側だけ</strong>読んでください。</p>
+
+      <div class="split">
+        <div class="os">
+          <h4><span style="color:var(--purple)">▲</span> iPhone（Safari）</h4>
+          <ol>
+            <li>画面の<strong>いちばん下</strong>にある、
+              <span style="white-space:nowrap">四角から↑が出ているマーク</span>を押す
+              <div style="color:var(--ink4);font-size:12.5px;margin-top:3px">「共有ボタン」と呼ばれるものです</div></li>
+            <li>出てきた一覧を<strong>下にスクロール</strong></li>
+            <li><strong>「ホーム画面に追加」</strong>を押す</li>
+            <li>右上の<strong>「追加」</strong>を押す</li>
+          </ol>
+        </div>
+        <div class="os android">
+          <h4><span style="color:var(--lime)">▲</span> Android（Chrome）</h4>
+          <ol>
+            <li>画面の<strong>右上</strong>にある
+              <code>⋮</code>（縦に点3つ）を押す</li>
+            <li>一覧から<strong>「アプリをインストール」</strong>を押す
+              <div style="color:var(--ink4);font-size:12.5px;margin-top:3px">端末によっては「ホーム画面に追加」と出ます</div></li>
+            <li><strong>「インストール」</strong>を押す</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="note warn">
+        <span class="t">先に STEP 3 を終わらせてください</span>
+        名前を選ぶ前にアイコンを置くと、<strong>アイコンから開くたびに設定画面から始まります。</strong>
+        もうやってしまった場合は、アイコンを長押しして削除し、もう一度この手順をやり直せば直ります。
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">5</div>
+    <div class="body">
+      <h3>アイコンから開いて、確認する</h3>
+      <p>ホーム画面に<strong>紫のアイコン</strong>が増えているはずです。押してみてください。</p>
+
+      <div class="shots">
+        <div class="phone" style="width:150px">
+          <div class="screen" style="border-radius:14px">
+            <div class="pad" style="padding:26px 14px">
+              <div style="background:var(--purple);border-radius:22px;padding:20px 10px;text-align:center">
+                <svg viewBox="0 0 100 100" style="width:44px;height:44px" aria-hidden="true">
+                  <path d="M50 4 L99 82 L76 82 L50 40 L24 82 L1 82 Z" fill="#FFE646"/>
+                  <path d="M50 55 L66 82 L34 82 Z" fill="#FFE646"/>
+                </svg>
+                <div style="font-family:var(--dela);font-size:15px;margin-top:8px;letter-spacing:-.02em">
+                  <span style="color:var(--lime)">OK</span><span style="color:var(--yellow)">APEX</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:5px;margin-top:5px">
+                  <i style="width:9px;height:1.5px;background:var(--yellow);display:block"></i>
+                  <span style="font-family:var(--mono);font-weight:700;font-size:6px;
+                               letter-spacing:.26em;color:var(--yellow)">LEGENDS</span>
+                  <i style="width:9px;height:1.5px;background:var(--yellow);display:block"></i>
+                </div>
+              </div>
+              <div style="text-align:center;font-size:9px;color:var(--ink2);margin-top:9px">サークル戦績</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">↑ これがホーム画面に並びます</div>
+
+      <p style="margin-top:26px"><strong>画面のいちばん上に、URLの欄が出ていなければ成功です。</strong>
+      ふつうのアプリと同じ、全画面で立ち上がります。</p>
+
+    </div>
+  </div>
+
+  <!-- ============ 困ったとき ============ -->
+  <div class="board">
+    <div class="n">TROUBLESHOOTING</div>
+    <h2>うまくいかないとき</h2>
+    <div class="sub">たいていは、この表のどれかです。</div>
+  </div>
+
+  <div class="scroll">
+    <table class="tbl">
+      <thead><tr><th>こうなった</th><th>こうする</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>「ホーム画面に追加」が見つからない（iPhone）</td>
+          <td><strong>Safariで開いていない</strong>可能性が高いです。LINEなどの中のブラウザからは追加できません。Safariで開き直してください。</td>
+        </tr>
+        <tr>
+          <td>「編集キーが違います」と赤く出る</td>
+          <td>キーが間違っています。欄の右の<strong>「表示」</strong>を押して中身を見比べ、コピーし直してください。手打ちは避けてください。</td>
+        </tr>
+        <tr>
+          <td>画面は出るが、数字が出ない</td>
+          <td>登録タブ → 右上の歯車 → <strong>URLの欄を空っぽにして「保存する」</strong>。そのあとページを再読み込みしてください。</td>
+        </tr>
+        <tr>
+          <td>「つながりませんでした」と出る</td>
+          <td>電波が届いていないか、サーバーが混んでいます。<strong>少し待って開き直して</strong>ください。</td>
+        </tr>
+        <tr>
+          <td>古い画面が出ている気がする</td>
+          <td>ブラウザで開いて<strong>再読み込み</strong>してください。アイコンから開いている場合は、一度閉じてから開き直します。</td>
+        </tr>
+        <tr>
+          <td>アイコンの絵が古いまま</td>
+          <td>アイコンは追加したときの絵が端末に焼き付きます。<strong>一度削除して、追加し直して</strong>ください。</td>
+        </tr>
+        <tr>
+          <td>それでもダメ</td>
+          <td>おかちゃんマンに<strong>画面のスクショを送ってください。</strong>文字で説明するより早く解決します。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ============ 終わり ============ -->
+  <div class="board" style="transform:rotate(1.4deg)">
+    <div class="n">READY</div>
+    <h2>これで準備完了です</h2>
+    <div class="sub">あとはApexをやるだけ。スクショを置けば、勝手に集計されます。</div>
+  </div>
+
+  <p style="text-align:center;color:var(--ink2);margin-top:26px">
+    アプリで何ができるかは、<strong>紹介ページ</strong>のほうにまとめてあります。<br>
+    称号15個の一覧もそこにあります。<em>「空気王」</em>とか<em>「ハイエナ王」</em>とか、ろくなものがありません。
+  </p>
+
+  <div class="end">
+    OKAPEX ／ 4人のApexサークル専用<br>
+    困ったら、遠慮なくおかちゃんマンまで
+  </div>
+
+</div>
+</body>
+</html>

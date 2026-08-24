@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#241C52">
+<meta name="description" content="スクショを置くだけでApexの戦績が貯まる。称号15個とランキングで競うサークル戦績アプリ。">
+<link rel="canonical" href="https://okada34.github.io/apex-spike/about/">
+<link rel="icon" href="https://okada34.github.io/apex-spike/icons/favicon-64.png">
+
+<!-- LINEやXに貼ったときの見え方 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="OKAPEX 戦績アプリ">
+<meta property="og:description" content="スクショを置くだけでApexの戦績が貯まる。称号15個とランキングで競うサークル戦績アプリ。">
+<meta property="og:url" content="https://okada34.github.io/apex-spike/about/">
+<meta property="og:image" content="https://okada34.github.io/apex-spike/icons/pwa-512x512.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<title>OKAPEX 戦績アプリ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Dela+Gothic+One&family=RocknRoll+One&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* アプリ本体と同じ世界。暗い一色に振り切る（アプリがダーク専用のため）。
+   明暗の切り替えは持たず、そのかわり全ての色を明示する。 */
+:root{
+  --ground:#241C52; --card:#332A70; --sunken:#2E2559; --line:#493D96;
+  --purple:#7C5CFF; --yellow:#FFE646; --lime:#C8FF00; --red:#FF5470;
+  --ink:#FFFFFF; --ink2:#C6BCF2; --ink3:#A99CE0; --ink4:#8478C4; --invert:#241C52;
+  --dela:'Dela Gothic One','Hiragino Sans','Yu Gothic',sans-serif;
+  --rr:'RocknRoll One','Hiragino Sans','Yu Gothic',sans-serif;
+  --mono:'Roboto Mono',ui-monospace,monospace;
+}
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--rr); font-size:16px; line-height:1.85;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+.wrap{ max-width:820px; margin:0 auto; padding:0 20px 90px; }
+p{ margin:0 0 1em; }
+strong{ color:var(--lime); font-weight:400; }
+em{ font-style:normal; color:var(--yellow); }
+a{ color:var(--lime); }
+a:focus-visible{ outline:3px solid var(--lime); outline-offset:3px; }
+code{ font-family:var(--mono); font-size:.86em; background:var(--sunken);
+      border:1px solid var(--line); border-radius:6px; padding:2px 7px; }
+
+/* ---------- 表紙。派手にいく ---------- */
+.hero{
+  position:relative; text-align:center; padding:84px 0 46px; isolation:isolate;
+}
+.glow{
+  position:absolute; inset:-20% -30% auto; height:520px; z-index:-1;
+  background:radial-gradient(58% 52% at 50% 32%, rgba(124,92,255,.42), transparent 72%);
+  pointer-events:none;
+}
+.logo{ width:112px; height:112px; margin:0 auto 22px; display:block; }
+.title{
+  font-family:'Anton',var(--dela); font-weight:400;
+  font-size:clamp(56px,17vw,132px); line-height:.92; letter-spacing:-.01em;
+  margin:0; text-wrap:balance;
+}
+.title .ok{ color:var(--lime); }
+.title .ap{ color:var(--yellow); }
+.rule{
+  display:flex; align-items:center; gap:14px; justify-content:center; margin:16px 0 0;
+  font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.42em;
+  color:var(--yellow); text-transform:uppercase;
+}
+.rule::before, .rule::after{
+  content:''; width:44px; height:2px; background:var(--yellow); display:block;
+}
+.tagline{
+  font-family:var(--dela); font-size:clamp(19px,4.6vw,30px); line-height:1.5;
+  margin:34px auto 0; max-width:15em; text-wrap:balance;
+}
+.tagline .hl{
+  background:var(--lime); color:var(--invert); padding:2px 10px;
+  border-radius:8px; display:inline-block; transform:rotate(-1.4deg);
+}
+.sub{ color:var(--ink2); margin-top:22px; font-size:16.5px; }
+
+/* ---------- 3ステップ ---------- */
+.flow{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:58px 0 0;
+}
+@media (max-width:640px){ .flow{ grid-template-columns:1fr; } }
+.f{
+  background:var(--card); border-radius:18px; padding:22px 20px; text-align:center;
+  border-top:4px solid var(--purple); position:relative;
+}
+.f:nth-child(2){ border-top-color:var(--yellow); }
+.f:nth-child(3){ border-top-color:var(--lime); }
+.f .ic{ font-size:30px; line-height:1; }
+.f h3{ font-family:var(--dela); font-weight:400; font-size:16px; margin:12px 0 8px; }
+.f p{ font-size:14px; color:var(--ink2); margin:0; }
+
+/* ---------- 大見出し（黄看板） ---------- */
+.board{
+  background:var(--yellow); color:var(--invert); border-radius:20px;
+  padding:24px 26px; transform:rotate(-1.4deg); margin:76px 0 34px;
+}
+.board .n{
+  font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.2em;
+  color:rgba(36,28,82,.6);
+}
+.board h2{
+  font-family:var(--dela); font-weight:400; font-size:clamp(23px,5.4vw,34px);
+  margin:5px 0 0; line-height:1.28; text-wrap:balance;
+}
+.board .d{ font-size:14.5px; color:rgba(36,28,82,.78); margin-top:9px; }
+
+/* ---------- 称号 ---------- */
+.titles{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+@media (max-width:640px){ .titles{ grid-template-columns:1fr; } }
+.t{
+  background:var(--card); border-radius:15px; padding:16px 18px;
+  border-left:4px solid var(--line);
+}
+.t.good{ border-left-color:var(--lime); }
+.t.bad{ border-left-color:var(--red); }
+.t .nm{ font-family:var(--dela); font-weight:400; font-size:17px; }
+.t .ds{ font-size:13.5px; color:var(--ink2); margin-top:6px; line-height:1.65; }
+.legend{
+  display:flex; gap:20px; flex-wrap:wrap; margin:18px 0 0;
+  font-size:13px; color:var(--ink3);
+}
+.legend span{ display:flex; align-items:center; gap:8px; }
+.legend i{ width:14px; height:4px; border-radius:2px; display:block; }
+
+/* ---------- 画面紹介 ---------- */
+.screens{ display:flex; flex-direction:column; gap:18px; }
+.sc{
+  display:grid; grid-template-columns:200px 1fr; gap:26px; align-items:center;
+  background:var(--card); border-radius:20px; padding:24px;
+}
+.sc:nth-child(even){ grid-template-columns:1fr 200px; }
+.sc:nth-child(even) .art{ order:2; }
+@media (max-width:660px){
+  .sc, .sc:nth-child(even){ grid-template-columns:1fr; gap:18px; }
+  .sc:nth-child(even) .art{ order:0; }
+}
+.sc h3{
+  font-family:var(--dela); font-weight:400; font-size:20px; margin:0 0 10px;
+  display:flex; align-items:center; gap:11px; flex-wrap:wrap;
+}
+.pill{
+  font-family:var(--mono); font-weight:700; font-size:10px; letter-spacing:.14em;
+  background:var(--sunken); border:1px solid var(--line); border-radius:20px;
+  padding:4px 11px; color:var(--ink3);
+}
+.sc p{ color:var(--ink2); font-size:15px; margin:0; }
+
+/* 画面の小さな再現 */
+.art{ background:var(--ground); border-radius:14px; padding:12px 11px; font-size:9px; line-height:1.6; }
+.a-board{ background:var(--yellow); color:var(--invert); border-radius:10px; padding:10px 11px; transform:rotate(-1.4deg); }
+.a-bt{ font-family:var(--dela); font-size:12px; }
+.a-row{ display:flex; align-items:center; gap:6px; padding:6px 0; border-bottom:1.5px solid rgba(36,28,82,.16); }
+.a-row:last-child{ border-bottom:0; }
+.a-tag{ background:var(--invert); color:var(--yellow); border-radius:9px; padding:1px 5px; font-size:6.5px; flex:none; }
+.a-nm{ font-family:var(--dela); font-size:10px; }
+.a-v{ margin-left:auto; font-family:var(--mono); font-weight:700; font-size:11px; }
+.a-line{ display:flex; align-items:center; gap:7px; margin-bottom:7px; }
+.a-no{ width:17px; height:17px; border-radius:50%; background:var(--sunken); color:var(--ink2);
+       font-family:var(--mono); font-weight:700; font-size:8px; display:flex; align-items:center; justify-content:center; flex:none; }
+.a-no.one{ background:var(--lime); color:var(--invert); }
+.a-bar{ height:5px; border-radius:3px; background:var(--sunken); overflow:hidden; margin-bottom:9px; }
+.a-bar i{ display:block; height:100%; border-radius:3px; }
+.a-badge{ background:var(--lime); color:var(--invert); border:2px solid #9CC700; border-radius:7px;
+          padding:5px 8px; font-family:var(--dela); font-size:9px; display:inline-block; margin:0 4px 5px 0; }
+.a-seg{ display:flex; gap:3px; height:11px; margin:8px 0 4px; }
+.a-seg i{ flex:1; border-radius:3px; background:var(--sunken); display:block; }
+.a-nums{ display:flex; gap:3px; font-family:var(--mono); font-weight:700; font-size:7px; color:var(--ink4); }
+.a-nums span{ flex:1; text-align:center; }
+
+/* ---------- データランクの引用 ---------- */
+.quote{
+  border-left:4px solid var(--purple); padding:6px 0 6px 22px; margin:26px 0;
+  font-family:var(--dela); font-size:clamp(17px,3.6vw,22px); line-height:1.6; text-wrap:balance;
+}
+.quote small{ display:block; font-family:var(--rr); font-size:14.5px; color:var(--ink2); margin-top:12px; line-height:1.8; }
+
+/* ---------- 締め ---------- */
+.cta{
+  background:linear-gradient(150deg,#3A2E86,#241C52); border:2px solid var(--purple);
+  border-radius:24px; padding:40px 30px; text-align:center; margin-top:26px;
+}
+.cta h2{ font-family:var(--dela); font-weight:400; font-size:clamp(22px,5vw,30px); margin:0 0 14px; text-wrap:balance; }
+.cta p{ color:var(--ink2); margin:0 0 24px; }
+.btn{
+  display:inline-block; background:var(--lime); color:var(--invert); text-decoration:none;
+  font-family:var(--dela); font-size:16px; padding:16px 34px; border-radius:15px;
+  transform:rotate(-1.4deg);
+}
+.cta .warn{
+  color:var(--yellow); font-size:13.5px; margin:20px 0 0; line-height:1.7;
+}
+.end{
+  margin-top:60px; padding-top:28px; border-top:1px solid var(--line);
+  text-align:center; color:var(--ink4); font-size:13.5px;
+}
+@media (prefers-reduced-motion:no-preference){
+  .hero, .flow{ animation:rise .7s cubic-bezier(.2,.9,.3,1) both; }
+  .flow{ animation-delay:.12s; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ 表紙 ============ -->
+  <div class="hero">
+    <div class="glow"></div>
+    <svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M50 4 L99 82 L76 82 L50 40 L24 82 L1 82 Z" fill="#FFE646"/>
+      <path d="M50 55 L66 82 L34 82 Z" fill="#FFE646"/>
+    </svg>
+    <h1 class="title"><span class="ok">OK</span><span class="ap">APEX</span></h1>
+    <div class="rule">Legends</div>
+    <div class="tagline">スクショを置くだけ。<br><span class="hl">あとは全部やります。</span></div>
+    <p class="sub">メンバーの戦績が、戦績として貯まっていくアプリを作りました。</p>
+  </div>
+
+  <!-- ============ 3ステップ ============ -->
+  <div class="flow">
+    <div class="f">
+      <div class="ic">📸</div>
+      <h3>撮る</h3>
+      <p>PS5でリザルト画面のスクショを撮って、共有するだけ。</p>
+    </div>
+    <div class="f">
+      <div class="ic">🤖</div>
+      <h3>読む</h3>
+      <p>5分おきにAIが数字を読み取ります。手入力はゼロ。</p>
+    </div>
+    <div class="f">
+      <div class="ic">👑</div>
+      <h3>競う</h3>
+      <p>ランキング、称号、自己ベスト。全部そろって出てきます。</p>
+    </div>
+  </div>
+
+  <!-- ============ 称号 ============ -->
+  <div class="board">
+    <div class="n">15 TITLES</div>
+    <h2>称号が15個あります。<br>いいものばかりではありません。</h2>
+    <div class="d">毎スプリット、それぞれ1人にだけ付きます。奪ったり奪われたりします。</div>
+  </div>
+
+  <div class="titles">
+    <div class="t good"><div class="nm">横井庄一王</div><div class="ds">味方が全滅しても一人で戦い続けた人</div></div>
+    <div class="t good"><div class="nm">火力番長</div><div class="ds">1試合1,500ダメージ超えを量産した人</div></div>
+    <div class="t good"><div class="nm">介護士</div><div class="ds">いちばん味方を起こしている人</div></div>
+    <div class="t good"><div class="nm">一撃屋</div><div class="ds">1試合の最高ダメージ記録の保持者</div></div>
+    <div class="t good"><div class="nm">手数王</div><div class="ds">キルにならなくても削り続ける人</div></div>
+    <div class="t good"><div class="nm">皆勤賞</div><div class="ds">このスプリットでいちばん出た人</div></div>
+    <div class="t good"><div class="nm">蘇生術師</div><div class="ds">いちばん味方をリスポーンさせている人</div></div>
+    <div class="t good"><div class="nm">三銃士</div><div class="ds">いちばん組んでいる3人の組み合わせ</div></div>
+    <div class="t bad"><div class="nm">空気王</div><div class="ds">撃つ前に終わっている試合がいちばん多い人</div></div>
+    <div class="t bad"><div class="nm">先陣王</div><div class="ds">いつも真っ先に散っていく人</div></div>
+    <div class="t bad"><div class="nm">ハイエナ王</div><div class="ds">味方が倒した敵に美味しくトドメを刺す人</div></div>
+    <div class="t bad"><div class="nm">安全地帯マスター</div><div class="ds">何もしていないのに勝っている人</div></div>
+    <div class="t bad"><div class="nm">ノック製造機</div><div class="ds">倒すのは上手いがトドメを人に譲る人</div></div>
+    <div class="t bad"><div class="nm">一蓮托生</div><div class="ds">仲間と一緒に死ぬのがいちばん多い人</div></div>
+    <div class="t bad"><div class="nm">渡り鳥</div><div class="ds">今月ほとんど来なかった人</div></div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--lime)"></i>誇っていいもの　8個</span>
+    <span><i style="background:var(--red)"></i>そうでもないもの　7個</span>
+  </div>
+
+  <p style="margin-top:26px;color:var(--ink2)">
+    <strong>逃げられません。</strong>「空気王」も「ハイエナ王」も、数字が勝手に決めます。
+    誰かが取れば、ホーム画面に <em>「ダークネスが空気王を取った」</em> と出ます。
+  </p>
+
+  <!-- ============ 画面 ============ -->
+  <div class="board" style="transform:rotate(1.4deg)">
+    <div class="n">5 SCREENS</div>
+    <h2>見られるもの</h2>
+    <div class="d">下のタブで行き来します。全部スマホ縦画面用に作ってあります。</div>
+  </div>
+
+  <div class="screens">
+
+    <div class="sc">
+      <div class="art">
+        <div class="a-board">
+          <div class="a-bt">今日の3王</div>
+          <div class="a-row"><span class="a-tag">キル王</span><span class="a-nm">マン坊</span><span class="a-v">12</span></div>
+          <div class="a-row"><span class="a-tag">ダメージ王</span><span class="a-nm">おかちゃん</span><span class="a-v">8,240</span></div>
+          <div class="a-row"><span class="a-tag">復活王</span><span class="a-nm">ダークネス</span><span class="a-v">7</span></div>
+        </div>
+      </div>
+      <div>
+        <h3>ホーム <span class="pill">毎日ここから</span></h3>
+        <p>その日いちばん倒した人・削った人・起こした人が、黄色い看板に出ます。
+        その下に <strong>「今日で動いたこと」</strong>。誰が称号を奪ったか、誰が自己ベストを更新したかが並びます。</p>
+      </div>
+    </div>
+
+    <div class="sc">
+      <div class="art">
+        <div class="a-line"><span class="a-no one">1</span><span class="a-nm">マン坊</span><span class="a-v">1,242</span></div>
+        <div class="a-bar"><i style="width:100%;background:var(--lime)"></i></div>
+        <div class="a-line"><span class="a-no">2</span><span class="a-nm">おかちゃん</span><span class="a-v">1,180</span></div>
+        <div class="a-bar"><i style="width:95%;background:var(--purple)"></i></div>
+        <div class="a-line"><span class="a-no">3</span><span class="a-nm">ダークネス</span><span class="a-v">1,046</span></div>
+        <div class="a-bar"><i style="width:84%;background:var(--purple)"></i></div>
+      </div>
+      <div>
+        <h3>ランキング <span class="pill">7つの指標</span></h3>
+        <p>平均ダメージ・平均キル・平均アシスト・平均復活・1位率・5位以内率・出場数。
+        期間も切り替えられます。月末には <strong>月間表彰5部門</strong>。
+        <em>暴虐王・殺人王・復活王・勝率王・食い込み王</em> が決まります。</p>
+      </div>
+    </div>
+
+    <div class="sc">
+      <div class="art">
+        <div style="margin-bottom:5px"><span class="a-badge">横井庄一王</span><span class="a-badge">火力番長</span></div>
+        <div><span class="a-badge">介護士</span><span class="a-badge">一撃屋</span></div>
+        <div style="font-family:var(--mono);font-weight:700;font-size:9px;color:var(--ink3);margin-top:8px">6 / 15</div>
+      </div>
+      <div>
+        <h3>マイページ <span class="pill">自分の全部</span></h3>
+        <p>持っている称号、よく使うキャラ、自己ベスト。
+        <strong>他の3人のページも見られます。</strong>誰が何を持っているか丸わかりです。</p>
+      </div>
+    </div>
+
+    <div class="sc">
+      <div class="art">
+        <div style="font-family:var(--dela);font-size:11px">ヴァルキリー <span style="color:#A855F7;font-size:8px">リコン</span></div>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-top:5px">
+          <span style="font-family:var(--mono);font-weight:700;font-size:17px">1,342</span>
+          <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">±158</span>
+        </div>
+        <div class="a-seg">
+          <i style="background:var(--purple)"></i><i style="background:var(--red)"></i>
+          <i style="background:linear-gradient(90deg,var(--yellow) 50%,var(--sunken) 50%)"></i><i></i>
+        </div>
+        <div class="a-nums"><span>15</span><span>30</span><span>64</span><span>400</span></div>
+      </div>
+      <div>
+        <h3>データランク <span class="pill">いちばん凝ってる</span></h3>
+        <p>「その平均、何戦積んだ数字なの？」に答えます。
+        4段あって、<em>信憑性ゼロ → 疑義アリ → クセ判明 → 実力値</em>。
+        <strong>15戦たまるまで平均値は出しません。</strong>たまたま良かった1試合で動く数字は、出さないほうが誠実なので。</p>
+      </div>
+    </div>
+
+    <div class="sc">
+      <div class="art">
+        <div class="a-board" style="padding:9px 10px">
+          <div class="a-bt" style="font-size:10px">サークル目標</div>
+          <div style="font-family:var(--mono);font-weight:700;font-size:20px;margin-top:3px">9<span style="font-family:var(--rr);font-size:9px">回</span></div>
+          <div style="background:var(--ground);border-radius:6px;padding:3px;margin-top:7px">
+            <div class="a-seg" style="height:9px;margin:0;gap:3px">
+              <i style="background:var(--purple)"></i>
+              <i style="background:linear-gradient(90deg,var(--red) 57%,var(--sunken) 57%)"></i>
+              <i></i><i></i>
+            </div>
+          </div>
+          <div style="display:flex;gap:3px;font-family:var(--rr);font-size:6.5px;color:rgba(36,28,82,.5);margin-top:4px">
+            <span style="flex:1;text-align:center">論外</span>
+            <span style="flex:1;text-align:center;color:var(--invert)">物足りない</span>
+            <span style="flex:1;text-align:center">及第点</span>
+            <span style="flex:1;text-align:center">アッパレ</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3>サークル <span class="pill">みんなの目標</span></h3>
+        <p>「今季1位を何回取るか」をみんなで決めて、進み具合を見ます。
+        <strong>区切りの数字も、呼び名も自分たちで決められます。</strong>
+        <em>「論外」</em>から<em>「アッパレ」</em>まで、好きに書き換えてください。</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ こだわり ============ -->
+  <div class="board">
+    <div class="n">HOW IT WORKS</div>
+    <h2>手で数字を入れる場所は、<br>ひとつもありません</h2>
+    <div class="d">スクショを置く。それだけです。</div>
+  </div>
+
+  <div class="quote">
+    「この数字、どれくらい信じていい？」
+    <small>試合数が少ないうちは、平均値はたまたまで動きます。
+    だからこのアプリは、<strong>信じていい数字かどうか</strong>まで一緒に出します。
+    3戦の平均で「あいつより上だ」と言い張れないように。</small>
+  </div>
+
+  <p style="color:var(--ink2)">
+    読み取りはAIがやりますが、<strong>数字が怪しいところは赤枠で教えてくれます。</strong>
+    キル数の合計が合わなければ「直してくれ」と出るし、はっきり読めた試合は承認するだけ。
+    <em>使うキャラだけは手で選びます</em>（リザルト画面にキャラ名が出ないので、これはどうにもなりませんでした。EAがクソすぎるせいです）。
+  </p>
+
+  <p style="color:var(--ink2)">
+    あと、<strong>撮り逃した試合はあきらめる作り</strong>です。
+    あとから手で足せるようにすると、盛れてしまうので。
+  </p>
+
+  <!-- ============ 締め ============ -->
+  <div class="cta">
+    <h2>さあ、入れてください</h2>
+    <p>3分で終わります。アプリストアは要りません。</p>
+    <a class="btn" href="https://okada34.github.io/apex-spike/start/">入れかたを見る</a>
+    <p style="margin-top:22px">
+      <a href="https://okada34.github.io/apex-spike/" style="color:var(--ink2);font-size:14.5px">
+        手順はいいので、とりあえず開く
+      </a>
+    </p>
+  </div>
+
+  <p style="text-align:center;color:var(--ink3);margin-top:34px;font-size:14.5px">
+    今後これで戦績を蓄積していきます。<br>
+    <strong>サークルの戦力強化に役立てば幸いです。</strong>
+  </p>
+
+  <div class="end">
+    OKAPEX ／ 4人のApexサークル専用<br>
+    PS5・ランクマッチのみ ／ 制作 おかちゃんマン
+  </div>
+
+</div>
+</body>
+</html>
