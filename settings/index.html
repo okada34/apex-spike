@@ -452,22 +452,38 @@ function ingestBlock(){
     ['imported', '取り込みずみ', 'var(--ink2)'],
     ['queued', '取り込み待ち', 'var(--ink2)'],
     ['skipped_duplicate', '同じ画像なので飛ばした', 'var(--ink3)'],
-    ['failed', '読めなかった', 'var(--red)']
+    ['failed', '読めなかった', 'var(--red)'],
+    ['given_up', '諦めたぶん', 'var(--ink3)']
   ].filter(([k]) => c[k]).map(([k, label, color]) =>
     '<div class="acc"><span class="n" style="font-size:12px">' + label + '</span>' +
     '<span class="u" style="color:' + color + ';font-size:12px">' + c[k] + '枚</span></div>').join('');
 
+  // 諦めたぶんも消さずに出す。登録画面の警告からは外れるが、
+  // 「何をどういう理由で諦めたか」は追えるようにしておく
+  const live = (g.failures || []).filter(f => !f.given_up);
+  const gone = (g.failures || []).filter(f => f.given_up);
+
   const fails = (g.failures || []).length
     ? '<div class="warn" style="margin-top:10px">' +
-      '<div class="dela" style="font-size:12.5px;color:var(--red)">読めなかった ' + g.failures.length + '枚</div>' +
-      '<div class="sub" style="margin-top:9px">' + g.failures.map(f =>
+      '<div class="dela" style="font-size:12.5px;color:' + (live.length ? 'var(--red)' : 'var(--ink3)') + '">' +
+      (live.length ? '読めなかった ' + live.length + '枚' : '読めなかったぶんは全部諦めています') + '</div>' +
+      (live.length ? '<div class="sub" style="margin-top:9px">' + live.map(f =>
         '<b style="color:var(--ink2)">' + esc(f.file_name) + '</b><br>' +
         esc(String(f.error).split(String.fromCharCode(10))[0].split(': ')[0])
-      ).join('<br><br>') + '</div>' +
-      '<div class="sub" style="margin-top:11px;color:var(--ink2)">' +
-      'PS5のリザルト画面は<b>タブが分かれています</b>。' +
-      '「ライブ／リザルト」の<b>リザルト</b>側で、さらに<b>「リザルト」タブ</b>を選んでから撮ってください。' +
-      '順位と3人ぶんの成績は、そこにしか出ません。</div>' +
+      ).join('<br><br>') + '</div>' : '') +
+      (gone.length
+        ? '<div class="sub" style="margin-top:11px;color:var(--ink3)">' +
+          '<b style="color:var(--ink3)">諦めたぶん ' + gone.length + '枚</b><br>' +
+          gone.map(f => esc(f.file_name)).join('<br>') + '</div>'
+        : '') +
+      // 撮り方の注意は、まだ直せる失敗が残っているときだけ。
+      // 全部諦めたあとも出し続けると、ただの小言になる
+      (live.length
+        ? '<div class="sub" style="margin-top:11px;color:var(--ink2)">' +
+          'PS5のリザルト画面は<b>タブが分かれています</b>。' +
+          '「ライブ／リザルト」の<b>リザルト</b>側で、さらに<b>「リザルト」タブ</b>を選んでから撮ってください。' +
+          '順位と3人ぶんの成績は、そこにしか出ません。</div>'
+        : '') +
       '</div>'
     : '';
 

@@ -669,7 +669,10 @@ function paintList(){
 
     ${c.failed_in_queue ? `
     <div class="card red"><div class="spread"><span class="pill red">取り込み失敗 ${c.failed_in_queue}件</span></div>
-      <div class="sub" style="margin-top:8px">リザルト以外のタブや、読めなかった画像です。スプレッドシートの ingest_queue で理由を確認できます。</div></div>` : ''}
+      <div class="sub" style="margin-top:8px">リザルト以外のタブなど、読めなかった画像です。<b>設定＞取り込みの結果</b>で、どの画像がなぜ駄目だったかを見られます。</div>
+      <div class="sub" style="margin-top:8px">撮り直せないものは<b>諦めてください。</b>そうしないと、次に本当の失敗が起きても気づけません。</div>
+      <button class="btn ghost" id="giveUp" style="margin-top:12px">${c.failed_in_queue}件とも諦める</button>
+    </div>` : ''}
 
     <div id="secBad"></div>
     <div id="secOk"></div>
@@ -703,6 +706,9 @@ function paintList(){
     : 'キャラをまとめて直す';
   bulkBtn.onclick = () => openBulkLegends('');
   app.appendChild(bulkBtn);
+
+  const gu = document.getElementById('giveUp');
+  if(gu) gu.onclick = () => giveUpFailed(gu);
 
   // 途中で閉じていたら、その試合から再開できるようにする
   const last = store.get(LS.last);
@@ -1187,6 +1193,33 @@ function setLegend(entryId, legendId){
 // ===================================================================
 // 確定・除外・一括反映
 // ===================================================================
+/**
+ * 読めなかった画像を諦める。
+ *
+ * 行は消さない。status を given_up に変えて、警告の対象から外すだけ。
+ * 何をどういう理由で諦めたかは、設定＞取り込みの結果で引き続き見られる。
+ */
+function giveUpFailed(btn){
+  if(!S.key){ toast('編集キーが要ります', true); return; }
+  const before = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '送っています…';
+  apiPost({ action:'dismiss_failed_ingest' })
+    .then(r => {
+      if(!r.ok) throw new Error(r.error || '諦められませんでした');
+      toast(r.dismissed + '件を諦めました。設定＞取り込みの結果には残っています');
+      if(S.list && S.list.counts){
+        S.list.counts.failed_in_queue = 0;
+        cacheSet('review_list', S.list);
+      }
+      paintList();
+    })
+    .catch(err => {
+      btn.disabled = false; btn.textContent = before;
+      toast('できませんでした：' + err.message, true);
+    });
+}
+
 function confirmMatch(){
   const btn = document.getElementById('confirm');
   btn.disabled = true;
@@ -1194,24 +1227,120 @@ function confirmMatch(){
     .then(r => {
       btn.disabled = false;
       if(!r.ok){
-        if(r.code === 'LEGEND_REQUIRED'){ toast(r.error, true); return; }
-        throw new Error(r.error || '確定できませんでした');
+        const blocking = r.blocking || [];
+        // レジェンドが分からないだけなら、理由を書けば確定できる道を出す。
+        // 他に問題があるときは出さない（本当の不備を例外で押し通せてしまうため）
+        const onlyLegend = blocking.length > 0 &&
+          blocking.every(b => b.code === 'LEGEND_REQUIRED');
+        if(onlyLegend){ openUnresolvedSheet(blocking); return; }
+        if(blocking.length > 1){ openBlockingSheet(blocking); return; }
+        toast(r.error || '確定できませんでした', true);
+        return;
       }
-      toast(r.already ? 'すでに確定ずみです' : '確定しました');
-      store.del(LS.last);
-      // 取り直すと1.4秒止まる。確定したことは分かっているので手元で反映する
-      const mid = S.detail.match.match_id;
-      if(S.list){
-        S.list.matches = (S.list.matches || []).filter(m => m.match_id !== mid);
-        if(S.list.counts){
-          S.list.counts.pending = Math.max(0, (S.list.counts.pending || 0) - 1);
-          S.list.counts.confirmed = (S.list.counts.confirmed || 0) + 1;
-        }
-      }
-      delete S.details[mid];
-      renderList();
+      afterConfirmed(r);
     })
     .catch(err => { btn.disabled = false; toast('確定できませんでした：' + err.message, true, confirmMatch); });
+}
+
+/** 確定できたあとの後始末。通常確定と例外確定で共通 */
+function afterConfirmed(r){
+  toast(r.already ? 'すでに確定ずみです'
+      : r.legend_unresolved ? 'レジェンド不明のまま確定しました' : '確定しました');
+  store.del(LS.last);
+  // 取り直すと1.4秒止まる。確定したことは分かっているので手元で反映する
+  const mid = S.detail.match.match_id;
+  if(S.list){
+    S.list.matches = (S.list.matches || []).filter(m => m.match_id !== mid);
+    if(S.list.counts){
+      S.list.counts.pending = Math.max(0, (S.list.counts.pending || 0) - 1);
+      S.list.counts.confirmed = (S.list.counts.confirmed || 0) + 1;
+    }
+  }
+  delete S.details[mid];
+  renderList();
+}
+
+/**
+ * 直さないと確定できない理由の一覧。
+ * サーバーが見つけたものを全部見せる。1つずつ潰させると何度も往復させることになる。
+ */
+function openBlockingSheet(blocking){
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  sheet.innerHTML = `
+    <div class="sheetinner">
+      <div class="spread">
+        <span class="dela" style="font-size:17px">まだ確定できません</span>
+        <button class="btn ghost" style="width:auto;height:40px;padding:0 16px" id="bclose">閉じる</button>
+      </div>
+      <div class="sub" style="margin-top:12px">次の${blocking.length}件を直してください。</div>
+      <div style="margin-top:12px">
+        ${blocking.map(b => `
+          <div class="card red" style="margin-top:8px">
+            <div style="font-size:14px;line-height:1.7">${esc(b.detail || b.code)}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  sheet.querySelector('#bclose').onclick = close;
+  sheet.onclick = ev => { if(ev.target === sheet) close(); };
+}
+
+/**
+ * レジェンドが分からないまま確定するための口。
+ *
+ * リザルト画面のキャラ絵は装飾・スキン・アニメーションで判別できないことがあり、
+ * 「思い出せないから永遠に確定できない」を避けるために開けてある。
+ * ただし黙って通さない。理由を書いてもらい、編集履歴に残す。
+ */
+function openUnresolvedSheet(blocking){
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  sheet.innerHTML = `
+    <div class="sheetinner">
+      <div class="spread">
+        <span class="dela" style="font-size:17px">レジェンドが分からない</span>
+        <button class="btn ghost" style="width:auto;height:40px;padding:0 16px" id="uclose">閉じる</button>
+      </div>
+      <div class="sub" style="margin-top:12px">
+        ${blocking.map(b => esc(b.detail || b.code)).join('<br>')}
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div style="font-size:14px;line-height:1.75">
+          分からないまま確定できます。ただし<b style="color:var(--yellow)">この試合はレジェンド別の成績には入りません</b>。
+          個人の成績（キル・ダメージなど）には入ります。
+        </div>
+      </div>
+      <div class="sub" style="margin-top:14px">理由（あとで見返すため。必須）</div>
+      <textarea id="unote" rows="2" placeholder="例：スキンで分からない／覚えていない"
+        style="width:100%;margin-top:6px;padding:11px 13px;border-radius:11px;
+               border:1px solid var(--line);background:var(--sunken);color:var(--ink);
+               font-family:inherit;font-size:15px;line-height:1.6;resize:none"></textarea>
+      <button class="btn limeline" id="ugo" style="margin-top:14px">このまま確定する</button>
+    </div>`;
+  document.body.appendChild(sheet);
+
+  const close = () => sheet.remove();
+  sheet.querySelector('#uclose').onclick = close;
+  sheet.onclick = ev => { if(ev.target === sheet) close(); };
+
+  const go = sheet.querySelector('#ugo');
+  go.onclick = () => {
+    const note = sheet.querySelector('#unote').value.trim();
+    if(!note){ toast('理由を書いてください', true); return; }
+    go.disabled = true; go.textContent = '送っています…';
+    apiPost({ action:'confirm_match_override', match_id:S.detail.match.match_id, review_note:note })
+      .then(r => {
+        if(!r.ok) throw new Error(r.error || '確定できませんでした');
+        close();
+        afterConfirmed(r);
+      })
+      .catch(err => {
+        go.disabled = false; go.textContent = 'このまま確定する';
+        toast('確定できませんでした：' + err.message, true);
+      });
+  };
 }
 
 /** レジェンドと撮影者だけをその日の全試合へ。キル数やダメージは試合ごとに違うので含めない */
