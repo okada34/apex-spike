@@ -632,8 +632,10 @@ function ingestBlock(){
             : a2.state === 'slow' ? 'var(--yellow)'
             : a2.state === 'recovered' ? 'var(--yellow)'
             : a2.state === 'unknown' ? 'var(--ink3)'
-            : a2.state === 'running' ? 'var(--purple)' : 'var(--lime)') + '">' +
-        (a2.state === 'running' ? 'いま更新中です'
+            : a2.state === 'running' ? 'var(--purple)'
+            : a2.state === 'idle' ? 'var(--lime)' : 'var(--lime)') + '">' +
+        (a2.state === 'idle' ? '待ちはありません'
+          : a2.state === 'running' ? 'いま更新中です'
           : a2.state === 'trigger_dead' ? '止まっています'
           : a2.state === 'stuck' ? '処理できていません'
           : a2.state === 'killed' ? '途中で打ち切られました'
@@ -670,7 +672,10 @@ function ingestBlock(){
             : (a2.trigger_ago_min < 1 ? 'さっき' : a2.trigger_ago_min + '分前')) +
           '</span></div>'
         : '') +
-      (a2.state === 'stuck'
+      (a2.state === 'idle'
+        ? '<div class="sub" style="margin-top:9px">称号を直す必要がある変更はありません。' +
+          '試合を取り込むか、記録を直すとここが動きます。</div>'
+        : a2.state === 'stuck'
         ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
           '自動処理は動いていますが、' + (a2.skip_streak || 0) + '回連続で空振りしています。' +
           '称号の更新待ちが溢まったままになっています。</div>'
