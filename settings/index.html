@@ -697,7 +697,23 @@ function ingestBlock(){
         : '') +
     '</div>';
 
-  return cacheBlock + syncBlock +
+  // 整合性の点検。エディタから実行できないことがあるので、
+  // 画面から叩ける経路を用意する。**何も直さない。見るだけ。**
+  const auditBlock =
+    '<div class="sechead"><div class="t">整合性の点検</div></div>' +
+    '<div class="card">' +
+      '<div class="sub">シートに入っているデータ全体を見て、' +
+      '参照先の無い行・IDの重複・範囲外の数値などを探します。<b>何も直しません。</b></div>' +
+      '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
+        '<button class="btn" id="auditRun" style="flex:1;min-width:130px">点検する</button>' +
+        '<button class="btn" id="auditRunFull" style="flex:1;min-width:130px">称号まで見る</button>' +
+      '</div>' +
+      '<div class="sub" style="margin-top:8px">「称号まで見る」は、' +
+      'いま計算した称号と記録されている称号を突き合わせます。時間がかかります。</div>' +
+      '<div id="auditOut" style="margin-top:12px"></div>' +
+    '</div>';
+
+  return cacheBlock + syncBlock + auditBlock +
     '<div class="sechead"><div class="t">取り込みの結果</div></div>' +
     '<div class="card">' + (rows || '<div class="sub">まだありません</div>') + '</div>' +
     fails;
@@ -892,7 +908,71 @@ function render(){
   bind();
 }
 
+/**
+ * 整合性の点検。
+ *
+ * 結果は**控えに載せない**（サーバ側で除外済み）。
+ * 控えを返されると「直したのに同じ問題が出続ける」ことになる。
+ */
+function bindAudit(){
+  const out = document.getElementById('auditOut');
+  if(!out) return;
+
+  const run = async (withTitles) => {
+    if(!S.key){ toast('編集キーが要ります', true); return; }
+    out.innerHTML = '<div class="sub">点検しています……' +
+      (withTitles ? '（称号まで見るので時間がかかります）' : '') + '</div>';
+    try {
+      const p = { action:'audit' };
+      if(withTitles) p.titles = '1';
+      const j = await apiGet(p);
+      out.innerHTML = auditView(j);
+    } catch(err) {
+      out.innerHTML = '<div class="sub" style="color:var(--red)">' + esc(err.message) + '</div>';
+    }
+  };
+
+  const b1 = document.getElementById('auditRun');
+  if(b1) b1.onclick = () => run(false);
+  const b2 = document.getElementById('auditRunFull');
+  if(b2) b2.onclick = () => run(true);
+}
+
+function auditView(j){
+  const c = j.counts || {};
+  let h = '<div class="acc"><span class="n" style="font-size:12px">見た行</span>' +
+    '<span class="u" style="font-size:11px">試合' + (c.matches||0) + ' / 出場' + (c.entries||0) +
+    ' / 称号' + (c.awards||0) + '</span></div>';
+
+  if(!j.total){
+    h += '<div class="sub" style="margin-top:9px;color:var(--lime)">問題は見つかりませんでした。</div>';
+  } else {
+    h += '<div class="sub" style="margin-top:9px;color:var(--red)">問題 ' + j.total + '件</div>';
+    const by = j.by_code || {};
+    Object.keys(by).forEach(k => {
+      h += '<div class="acc"><span class="n" style="font-size:11.5px">' + esc(k) + '</span>' +
+        '<span class="u" style="font-size:11.5px">' + by[k] + '件</span></div>';
+    });
+    h += '<div class="sub" style="margin-top:9px">';
+    (j.problems || []).slice(0, 20).forEach(p => {
+      h += '・[' + esc(p.code) + '] ' + esc(p.detail) + (p.where ? ' <b>@' + esc(p.where) + '</b>' : '') + '<br>';
+    });
+    if((j.problems||[]).length > 20) h += '…ほか ' + ((j.problems||[]).length - 20) + '件';
+    h += '</div>';
+  }
+
+  if(j.title_diff){
+    const td = j.title_diff;
+    h += '<div class="acc" style="margin-top:9px"><span class="n" style="font-size:12px">称号の照合</span>' +
+      '<span class="u" style="font-size:12px;color:' + (td.mismatch ? 'var(--red)' : 'var(--lime)') + '">' +
+      td.checked + '件中 ' + td.mismatch + '件が食い違い</span></div>';
+  }
+  h += '<div class="sub" style="margin-top:8px">所要 ' + Math.round((j.ms||0)/100)/10 + '秒</div>';
+  return h;
+}
+
 function bind(){
+  bindAudit();
   app.querySelectorAll('[data-go]').forEach(b => {
     b.onclick = () => { S.view = b.dataset.go; render(); window.scrollTo({ top:0 }); };
   });
