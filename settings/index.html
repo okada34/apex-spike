@@ -736,6 +736,7 @@ function ingestBlock(){
       '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
         '<button class="btn" id="auditRun" style="flex:1;min-width:130px">点検する</button>' +
         '<button class="btn" id="auditRunFull" style="flex:1;min-width:130px">称号まで見る</button>' +
+        '<button class="btn" id="awardSync" style="flex:1;min-width:130px">称号を計算し直す</button>' +
       '</div>' +
       '<div class="sub" style="margin-top:8px">「称号まで見る」は、' +
       'いま計算した称号と記録されている称号を突き合わせます。時間がかかります。</div>' +
@@ -994,6 +995,31 @@ function bindAudit(){
     }
   };
 
+  const b3 = document.getElementById('awardSync');
+  if(b3) b3.onclick = async () => {
+    if(!S.key){ toast('編集キーが要ります', true); return; }
+    if(!S.personId){ toast('あなたが誰かを登録タブで選んでください', true); return; }
+    const label = b3.textContent;
+    b3.disabled = true; b3.textContent = '計算中…';
+    const t0 = Date.now();
+    out.innerHTML = '<div class="sub" id="auditWait">称号を計算しています……</div>';
+    const tick = setInterval(() => {
+      const w = document.getElementById('auditWait');
+      if(w) w.textContent = '称号を計算しています…… ' + Math.round((Date.now()-t0)/1000) + '秒';
+    }, 500);
+    try {
+      const r = await apiPost({ action:'sync_awards' });
+      const n = (r && r.changed) || 0;
+      out.innerHTML = '<div class="sub" style="color:var(--lime)">計算し直しました。記録を ' + n + ' 件追記しました。<br>' +
+        'もう一度「称号まで見る」を押すと確かめられます。</div>';
+    } catch(err) {
+      out.innerHTML = '<div class="sub" style="color:var(--red)">' + esc(err.message) + '</div>';
+    } finally {
+      clearInterval(tick);
+      b3.disabled = false; b3.textContent = label;
+    }
+  };
+
   if(b1) b1.onclick = () => run(b1, false);
   if(b2) b2.onclick = () => run(b2, true);
 }
@@ -1034,6 +1060,13 @@ function auditView(j){
         '集計のやり方を変えた直後はこの状態で、異常ではありません。<br>' +
         '次に試合を取り込むか、記録を直すと揃います。</div>';
     }
+  }
+
+  if(j.version_gap){
+    h += '<div class="sub" style="margin-top:9px;color:var(--yellow)">' +
+      '集計のやり方を変えたあと、まだ一度も記録していません。<br>' +
+      '<b style="color:var(--ink2)">壊れているのではありません。</b>' +
+      '上の「称号を計算し直す」を押せば揃います。</div>';
   }
 
   if(j.title_diff){
