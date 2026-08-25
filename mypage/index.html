@@ -177,6 +177,30 @@
     font-family:'RocknRoll One',sans-serif;
   }
   .toast.err .btn, .toast.err button{ background:rgba(255,255,255,.2); color:#FFFFFF; }
+
+  /* ---- 押した反応 ---- */
+  /*
+     押したのかどうか分からない、と指摘を受けた。
+     スマホはマウスのような hover が無いので、**触れている間の変化**が唯一の手がかり。
+     少し縮めて薄くする。形は変えないので、押し間違いを誘発しない
+  */
+  button:not(:disabled):active,
+  .row:not(:disabled):active,
+  .btn:not(:disabled):active,
+  [role="button"]:active {
+    transform: scale(.97);
+    opacity: .78;
+  }
+  button, .btn, .row {
+    transition: transform .07s ease, opacity .07s ease;
+  }
+  button:disabled, .btn:disabled {
+    opacity: .5;
+    cursor: default;
+  }
+  @media (prefers-reduced-motion: reduce){
+    button:not(:disabled):active, .btn:not(:disabled):active, .row:not(:disabled):active { transform:none; }
+  }
 </style>
 </head>
 <body>

@@ -260,6 +260,30 @@
     font-family:'RocknRoll One',sans-serif;
   }
   .toast.err .btn, .toast.err button{ background:rgba(255,255,255,.2); color:#FFFFFF; }
+
+  /* ---- 押した反応 ---- */
+  /*
+     押したのかどうか分からない、と指摘を受けた。
+     スマホはマウスのような hover が無いので、**触れている間の変化**が唯一の手がかり。
+     少し縮めて薄くする。形は変えないので、押し間違いを誘発しない
+  */
+  button:not(:disabled):active,
+  .row:not(:disabled):active,
+  .btn:not(:disabled):active,
+  [role="button"]:active {
+    transform: scale(.97);
+    opacity: .78;
+  }
+  button, .btn, .row {
+    transition: transform .07s ease, opacity .07s ease;
+  }
+  button:disabled, .btn:disabled {
+    opacity: .5;
+    cursor: default;
+  }
+  @media (prefers-reduced-motion: reduce){
+    button:not(:disabled):active, .btn:not(:disabled):active, .row:not(:disabled):active { transform:none; }
+  }
 </style>
 </head>
 <body>
@@ -271,9 +295,11 @@
     </button>
     <div class="ttl" id="title">登録</div>
     <span class="saving" id="savestate"></span>
-    <button class="iconbtn" id="gear" aria-label="設定">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#A99CE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"></path></svg>
-    </button>
+    <button class="iconbtn" id="gear" aria-label="この端末の設定">
+        <!-- ホームの歯車（サークル全体の設定）と見分けるため、
+             こちらは**端末**の絵にしてある -->
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#A99CE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.6"></rect><path d="M10.6 5.4h2.8"></path><circle cx="12" cy="18.2" r="1"></circle></svg>
+      </button>
   </header>
 
   <main id="app"></main>
@@ -629,7 +655,7 @@ function renderTabs(){
 // ===================================================================
 function renderSetup(){
   S.view = 'setup';
-  titleEl.textContent = '設定';
+  titleEl.textContent = 'この端末の設定';
   backEl.hidden = !S.url;
   const persons = (S.masters && S.masters.persons) || [];
   app.innerHTML = `
@@ -637,6 +663,11 @@ function renderSetup(){
       <div class="sub">この端末に保存されます。次回から入力は要りません。</div>
       ${store.usable() ? '' : '<div class="sub" style="color:var(--red);margin-top:8px">いまの開き方では設定を保存できません（ファイルを直接開いているためです）。公開したURLから開いてください。</div>'}
 
+      <div class="sub" style="margin-bottom:12px">
+        ここは<b style="color:var(--ink2)">このスマホだけの設定</b>です。他の人には影響しません。<br>
+        取り込みの状態やサークル全体の設定は、
+        <b style="color:var(--lime)">ホームの右上の歯車</b>から見られます。
+      </div>
       <label for="f_url">WebアプリのURL</label>
       <input id="f_url" type="text" value="${esc(S.url)}" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" spellcheck="false">
       <div class="sub" style="margin-top:6px">最初から入っています。<b style="color:var(--ink2)">触らなくて大丈夫です。</b><br>おかしくなったら、<b style="color:var(--lime)">この欄を空にして保存</b>すると元に戻ります。</div>
