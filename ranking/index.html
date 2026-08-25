@@ -944,20 +944,43 @@ function scrollMetricBarIntoView(){
 
   // offsetLeft は使わない。.mtabs に position が無いので、
   // 基準が body になってしまう（実測で確認）。
-  // 見えている位置同士の差で求めれば、位置指定に左右されない
   var br = bar.getBoundingClientRect();
   var cr = on.getBoundingClientRect();
-  var delta = (cr.left + cr.width / 2) - (br.left + br.width / 2);
+
+  // === 中央に持ってこない ===
+  //
+  // はじめは選ばれたチップを中央へ寄せていたが、
+  // **それだと毎回大きく動く（実測で 93px 動いた回があった）。**
+  // 目で追えない速さになり、滑らかさが失われる。
+  //
+  // 見えているなら**動かさない。**
+  // 見えていないときだけ、見えるだけ動かす。
+  var PEEK = 26;      // 端に残す余白。次のチップの端が覗くので「まだ先がある」と分かる
+
+  var to = bar.scrollLeft;
+  var overRight = cr.right - (br.right - PEEK);
+  var overLeft  = (br.left + PEEK) - cr.left;
+
+  if(overRight > 0)      to = bar.scrollLeft + overRight;
+  else if(overLeft > 0)  to = bar.scrollLeft - overLeft;
+  else                   return;                        // 見えている。動かさない
 
   var max = Math.max(0, bar.scrollWidth - bar.clientWidth);
-  var to  = Math.max(0, Math.min(max, Math.round(bar.scrollLeft + delta)));
+  to = Math.max(0, Math.min(max, Math.round(to)));
   if(Math.abs(to - bar.scrollLeft) < 1) return;
 
   animateBarScroll_(bar, to);
 }
 
-/** バーの滑らかさ。中身の動き（.19s）と揃える */
-var BAR_SCROLL_MS_ = 240;
+/**
+ * バーを動かす速さ（px/ミリ秒）と、時間の下限・上限。
+ *
+ * 固定時間にすると、**短い移動は遅すぎ、長い移動は速すぎる。**
+ * 速さを揃えれば、どの段でも同じ進み方に見える。
+ */
+var BAR_SPEED_    = 0.34;   // 1ミリ秒あたり何px進むか
+var BAR_MS_MIN_   = 190;    // 中身のスライド（.19s）と揃える
+var BAR_MS_MAX_   = 420;
 
 /**
  * バーを滑らかに横へ動かす。
@@ -984,12 +1007,15 @@ function animateBarScroll_(bar, to){
   var token = (bar.__barAnim || 0) + 1;
   bar.__barAnim = token;
 
+  // 距離に応じて長さを決める。速さが揃うので段によるムラが出ない
+  var ms = Math.max(BAR_MS_MIN_, Math.min(BAR_MS_MAX_, Math.abs(dist) / BAR_SPEED_));
+
   var t0 = null, done = false;
   var ease = function(t){ return 1 - Math.pow(1 - t, 3); };   // ease-out
   var step = function(ts){
     if(bar.__barAnim !== token || !bar.isConnected) return;   // 描き直されたならやめる
     if(t0 === null) t0 = ts;
-    var p = Math.min(1, (ts - t0) / BAR_SCROLL_MS_);
+    var p = Math.min(1, (ts - t0) / ms);
     bar.scrollLeft = from + dist * ease(p);
     if(p < 1) requestAnimationFrame(step);
     else done = true;
@@ -1005,7 +1031,7 @@ function animateBarScroll_(bar, to){
   setTimeout(function(){
     if(done || bar.__barAnim !== token || !bar.isConnected) return;
     bar.scrollLeft = to;
-  }, BAR_SCROLL_MS_ + 400);
+  }, ms + 400);
 }
 
 /** いまの指標の並び順での位置 */
