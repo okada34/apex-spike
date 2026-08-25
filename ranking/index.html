@@ -978,9 +978,9 @@ function scrollMetricBarIntoView(){
  * 固定時間にすると、**短い移動は遅すぎ、長い移動は速すぎる。**
  * 速さを揃えれば、どの段でも同じ進み方に見える。
  */
-var BAR_SPEED_    = 0.34;   // 1ミリ秒あたり何px進むか
-var BAR_MS_MIN_   = 190;    // 中身のスライド（.19s）と揃える
-var BAR_MS_MAX_   = 420;
+var BAR_SPEED_    = 0.18;   // 1ミリ秒あたり何px進むか（小さいほどゆっくり）
+var BAR_MS_MIN_   = 220;    // どんなに短い移動でもこれより速くしない
+var BAR_MS_MAX_   = 560;
 
 /**
  * バーを滑らかに横へ動かす。
@@ -1011,7 +1011,14 @@ function animateBarScroll_(bar, to){
   var ms = Math.max(BAR_MS_MIN_, Math.min(BAR_MS_MAX_, Math.abs(dist) / BAR_SPEED_));
 
   var t0 = null, done = false;
-  var ease = function(t){ return 1 - Math.pow(1 - t, 3); };   // ease-out
+  // === 静かに出て、静かに止まる ===
+  //
+  // はじめは ease-out（三次）だったが、あれは**動き出しがいちばん速い。**
+  // 同じ距離・同じ時間でも、瞬間の速さは平均の3倍になる（実測 1.02 px/ミリ秒）。
+  // これが「パッと動く」正体だった。
+  //
+  // smoothstep は両端で速さが 0 になる。最速は真ん中で平均の1.5倍だけ。
+  var ease = function(t){ return t * t * (3 - 2 * t); };   // 両端がなめらか
   var step = function(ts){
     if(bar.__barAnim !== token || !bar.isConnected) return;   // 描き直されたならやめる
     if(t0 === null) t0 = ts;
