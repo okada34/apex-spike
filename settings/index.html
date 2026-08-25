@@ -631,8 +631,10 @@ function ingestBlock(){
           (BADSYNC.indexOf(a2.state) >= 0 ? 'var(--red)'
             : a2.state === 'slow' ? 'var(--yellow)'
             : a2.state === 'recovered' ? 'var(--yellow)'
-            : a2.state === 'unknown' ? 'var(--ink3)' : 'var(--lime)') + '">' +
-        (a2.state === 'trigger_dead' ? '止まっています'
+            : a2.state === 'unknown' ? 'var(--ink3)'
+            : a2.state === 'running' ? 'var(--purple)' : 'var(--lime)') + '">' +
+        (a2.state === 'running' ? 'いま更新中です'
+          : a2.state === 'trigger_dead' ? '止まっています'
           : a2.state === 'stuck' ? '処理できていません'
           : a2.state === 'killed' ? '途中で打ち切られました'
           : a2.state === 'failing' ? '失敗したままです'
