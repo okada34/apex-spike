@@ -188,6 +188,30 @@
     font-family:'RocknRoll One',sans-serif;
   }
   .toast.err .btn, .toast.err button{ background:rgba(255,255,255,.2); color:#FFFFFF; }
+
+  /* ---- 押した反応 ---- */
+  /*
+     押したのかどうか分からない、と指摘を受けた。
+     スマホはマウスのような hover が無いので、**触れている間の変化**が唯一の手がかり。
+     少し縮めて薄くする。形は変えないので、押し間違いを誘発しない
+  */
+  button:not(:disabled):active,
+  .row:not(:disabled):active,
+  .btn:not(:disabled):active,
+  [role="button"]:active {
+    transform: scale(.97);
+    opacity: .78;
+  }
+  button, .btn, .row {
+    transition: transform .07s ease, opacity .07s ease;
+  }
+  button:disabled, .btn:disabled {
+    opacity: .5;
+    cursor: default;
+  }
+  @media (prefers-reduced-motion: reduce){
+    button:not(:disabled):active, .btn:not(:disabled):active, .row:not(:disabled):active { transform:none; }
+  }
 </style>
 </head>
 <body>
@@ -718,7 +742,14 @@ function ingestBlock(){
       '<div id="auditOut" style="margin-top:12px"></div>' +
     '</div>';
 
-  return cacheBlock + syncBlock + auditBlock +
+  const whereBlock =
+    '<div class="card" style="margin-top:14px">' +
+      '<div class="sub">ここは<b style="color:var(--ink2)">サークル全体の設定</b>です。<br>' +
+      'このスマホの接続先や、あなたが誰かの設定は、' +
+      '<b style="color:var(--lime)">登録タブの右上</b>から変えられます。</div>' +
+    '</div>';
+
+  return cacheBlock + syncBlock + auditBlock + whereBlock +
     '<div class="sechead"><div class="t">取り込みの結果</div></div>' +
     '<div class="card">' + (rows || '<div class="sub">まだありません</div>') + '</div>' +
     fails;
@@ -923,10 +954,31 @@ function bindAudit(){
   const out = document.getElementById('auditOut');
   if(!out) return;
 
-  const run = async (withTitles) => {
+  const b1 = document.getElementById('auditRun');
+  const b2 = document.getElementById('auditRunFull');
+
+  const run = async (btn, withTitles) => {
     if(!S.key){ toast('編集キーが要ります', true); return; }
-    out.innerHTML = '<div class="sub">点検しています……' +
-      (withTitles ? '（称号まで見るので時間がかかります）' : '') + '</div>';
+
+    // 押したことが分かるようにする。
+    // **数秒かかる処理で見た目が変わらないと、押せていないと思って連打される。**
+    const label = btn ? btn.textContent : '';
+    if(btn){ btn.disabled = true; btn.textContent = '点検中…'; }
+    if(b1 && b1 !== btn) b1.disabled = true;
+    if(b2 && b2 !== btn) b2.disabled = true;
+
+    const t0 = Date.now();
+    let tick = null;
+    out.innerHTML = '<div class="sub" id="auditWait">点検しています……' +
+      (withTitles ? '<br>称号まで見るので、少し時間がかかります。' : '') + '</div>';
+    // 経過秒数を出す。止まっていないことが見て分かる
+    tick = setInterval(() => {
+      const w = document.getElementById('auditWait');
+      if(w) w.innerHTML = '点検しています…… ' +
+        Math.round((Date.now() - t0) / 1000) + '秒' +
+        (withTitles ? '<br>称号まで見るので、少し時間がかかります。' : '');
+    }, 500);
+
     try {
       const p = { action:'audit' };
       if(withTitles) p.titles = '1';
@@ -934,13 +986,16 @@ function bindAudit(){
       out.innerHTML = auditView(j);
     } catch(err) {
       out.innerHTML = '<div class="sub" style="color:var(--red)">' + esc(err.message) + '</div>';
+    } finally {
+      if(tick) clearInterval(tick);
+      if(btn){ btn.disabled = false; btn.textContent = label; }
+      if(b1) b1.disabled = false;
+      if(b2) b2.disabled = false;
     }
   };
 
-  const b1 = document.getElementById('auditRun');
-  if(b1) b1.onclick = () => run(false);
-  const b2 = document.getElementById('auditRunFull');
-  if(b2) b2.onclick = () => run(true);
+  if(b1) b1.onclick = () => run(b1, false);
+  if(b2) b2.onclick = () => run(b2, true);
 }
 
 function auditView(j){
@@ -964,6 +1019,21 @@ function auditView(j){
     });
     if((j.problems||[]).length > 20) h += '…ほか ' + ((j.problems||[]).length - 20) + '件';
     h += '</div>';
+  }
+
+  if(j.awards_by_calc_version){
+    const bc = j.awards_by_calc_version;
+    const cur = j.current_calc_version || '';
+    const parts = Object.keys(bc).map(k =>
+      esc(k) + ' ' + bc[k] + '件' + (k === cur ? '（いまの版）' : ''));
+    h += '<div class="acc" style="margin-top:9px"><span class="n" style="font-size:12px">称号の版</span>' +
+      '<span class="u" style="font-size:11px">' + parts.join(' / ') + '</span></div>';
+    if(!bc[cur]){
+      h += '<div class="sub" style="margin-top:6px;color:var(--yellow)">' +
+        'いまの版ではまだ一度も記録されていません。' +
+        '集計のやり方を変えた直後はこの状態で、異常ではありません。<br>' +
+        '次に試合を取り込むか、記録を直すと揃います。</div>';
+    }
   }
 
   if(j.title_diff){
