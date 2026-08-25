@@ -656,8 +656,15 @@ function ingestBlock(){
         : '') +
       // 自動処理の心拍。再集計は「やることが無ければ呼ばれない」ので、
       // **こちらが途切れていないことが「生きている」の唯一の証拠**
+      (a2.trigger_completed_at
+        ? '<div class="acc"><span class="n" style="font-size:12px">自動処理の最終完了</span>' +
+          '<span class="u" style="font-size:12px;color:' + (a2.trigger_state !== 'ok' ? 'var(--red)' : 'inherit') + '">' +
+          (a2.trigger_completed_ago_min === null ? esc(String(a2.trigger_completed_at).slice(0,16).replace('T',' '))
+            : (a2.trigger_completed_ago_min < 1 ? 'さっき' : a2.trigger_completed_ago_min + '分前')) +
+          '</span></div>'
+        : '') +
       (a2.trigger_at
-        ? '<div class="acc"><span class="n" style="font-size:12px">自動処理の最終確認</span>' +
+        ? '<div class="acc"><span class="n" style="font-size:12px">自動処理の最終起動</span>' +
           '<span class="u" style="font-size:12px;color:' + (a2.trigger_state === 'dead' ? 'var(--red)' : 'inherit') + '">' +
           (a2.trigger_ago_min === null ? esc(String(a2.trigger_at).slice(0,16).replace('T',' '))
             : (a2.trigger_ago_min < 1 ? 'さっき' : a2.trigger_ago_min + '分前')) +
@@ -669,8 +676,13 @@ function ingestBlock(){
           '称号の更新待ちが溢まったままになっています。</div>'
         : a2.state === 'trigger_dead'
         ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
-          '5分ごとに動くはずの処理が、しばらく動いていません。' +
-          '取り込みも称号の更新も止まっています。</div>'
+          (a2.trigger_state === 'not_finishing'
+            ? '5分ごとの処理は起動していますが、最後まで行っていません。' +
+              '6分の上限で打ち切られている可能性があります。'
+            : a2.trigger_state === 'never_completed'
+            ? '5分ごとの処理が起動はしていますが、一度も最後まで終わっていません。'
+            : '5分ごとに動くはずの処理が、しばらく動いていません。') +
+          '取り込みも称号の更新も止まっているおそれがあります。</div>'
         : a2.state === 'killed'
         ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
           '前回の再集計が最後まで行きませんでした（6分の上限に当たった可能性）。' +
