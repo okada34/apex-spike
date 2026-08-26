@@ -1858,6 +1858,13 @@ async function boot(){
   // ?match=… で来たら、その試合を直接開く（確定ずみでも開ける）
   const want = new URLSearchParams(location.search).get('match');
 
+  // === 設定画面へ直接来られるようにする ===
+  //
+  // 設定の「選び直す」「編集キーを入れる」から `../record/` へ飛ばしていたが、
+  // **着くのは一覧で、選ぶ欄はその中の「この端末の設定」の中**だった。
+  // ボタンの文言どおりの場所に着かない
+  const wantSetup = new URLSearchParams(location.search).get('setup') === '1';
+
   // 人・アカウント・レジェンドの一覧はめったに変わらない。控えがあれば待たずに進む
   const cachedMasters = cacheGet('masters');
   if(cachedMasters){
@@ -1879,7 +1886,7 @@ async function boot(){
       return;
     }
   }
-  if(!S.personId){ renderSetup(); return; }
+  if(wantSetup || !S.personId){ renderSetup(); return; }
   if(want){ await openDetail(want); warmOtherScreens(S.personId); return; }
   await renderList();
   warmOtherScreens(S.personId);
