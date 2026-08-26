@@ -157,6 +157,12 @@
   .trow .pgv{ font-family:'Roboto Mono',monospace; font-size:10.5px; color:var(--ink3);
               width:56px; flex:none; text-align:right; letter-spacing:-.03em; }
   .trow .need{ font-size:10.5px; color:var(--ink4); margin-top:8px; }
+  /* カウント条件。**説明文だけでは何をすれば増えるのか分からない**ので、
+     計算式そのままを書く。ここは装飾せず、事実だけ */
+  .trow .how{ font-size:10.5px; color:var(--ink3); margin-top:7px; line-height:1.65;
+              padding:8px 10px; background:var(--sunken); border-radius:9px; }
+  .trow .how b{ color:var(--ink2); font-weight:400; }
+  .trow .how .lb{ color:var(--ink4); margin-right:6px; }
   .trow .need b{ color:var(--ink2); font-weight:400; }
 
   nav{
@@ -678,7 +684,7 @@ function renderMain(){
 
   const top3 = (d.legends || []).slice(0, 3);
   const legends = top3.length
-    ? '<div class="sechead"><div class="t">よく使うレジェンド</div><div class="n">よく出している3体</div></div>' +
+    ? '<div class="sechead"><div class="t">よく使うキャラ</div><div class="n">出した回数の上位3体</div></div>' +
       top3.map(l => legendCard(l, false)).join('') +
       '<button class="btn" id="allLegends">使用済み全キャラを見る</button>'
     : '';
@@ -745,6 +751,11 @@ function renderTitles(){
       }).join('') + '</div>';
   };
 
+  // カウント条件。**何をすれば増えるのか**を、実装そのままの言葉で出す。
+  // how は Mypage.gs に直書きした定数で、<b> を含むため esc しない（利用者の入力は入らない）
+  const howLine = t => t.how
+    ? '<div class="how"><span class="lb">数え方</span>' + t.how + '</div>' : '';
+
   // 必要値の説明。**なぜまだ誰も持っていないのかが分かるように**
   const needLine = t => {
     if(!t.need) return '';
@@ -761,7 +772,7 @@ function renderTitles(){
         ? '<div class="tv">' + (t.value === null ? '—' : n0(t.value) + esc(t.unit)) + '</div>'
         : '<div class="who2">いまは <b>' + (t.holder_name ? esc(t.holder_name) : '誰も持っていない') + '</b></div>') +
       '</div><div class="td">' + esc(t.desc) + '</div>' +
-      needLine(t) + bars(t) + '</div>';
+      howLine(t) + needLine(t) + bars(t) + '</div>';
 
   return '<div class="card" style="margin-top:4px"><div class="sub">' +
       'すべてスプリット単位。<span style="color:var(--ink2)">' + esc(d.split_label) + '</span> の集計です。<br>' +

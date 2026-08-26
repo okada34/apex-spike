@@ -415,6 +415,7 @@ const S = {
   editPerson: null,  // member/weapon 編集中の person
   draft: null,       // 編集中の値
   weaponSlot: 1,
+  legendSlot: 1,
   pending: 0,
   saving: 0
 };
@@ -622,7 +623,8 @@ function renderMain(){
 
   const ms = d.members || [];
   const members = ms.map(m => {
-    const legs = m.legends.length
+    // 得意キャラは**自己申告**。マイページの「よく使うキャラ」（実際の使用回数）とは別物
+  const legs = m.legends.length
       ? '<div class="chips2">' + m.legends.map(l => '<span class="lchip">' + esc(l.name) + '</span>').join('') + '</div>'
       : '<div class="sub" style="margin-top:6px">まだ1体も確定していない</div>';
 
@@ -635,7 +637,7 @@ function renderMain(){
     return '<div class="mem">' +
       '<div class="mh"><div class="mn">' + esc(m.name) + '</div>' +
       '<div class="mg">' + m.games + '戦</div></div>' +
-      '<div class="mblk"><div class="bl">よく使うレジェンド</div>' + legs + '</div>' +
+      '<div class="mblk"><div class="bl">得意キャラ</div>' + legs + '</div>' +
       '<div class="mblk"><div class="bl">よく使う武器</div>' + ws + '</div>' +
       '<div class="mnote' + (m.note ? '' : ' empty') + '">' + (m.note ? esc(m.note) : '一言はまだ書かれていない') + '</div>' +
       '<div class="medit"><button data-editm="' + esc(m.person_id) + '">武器と一言を直す</button></div>' +
@@ -738,8 +740,23 @@ function renderMember(){
     return w ? (w.category + '　' + w.name_ja) : '';
   };
 
+  const lname = id => {
+    const l = (S.data.legends || []).find(x => x.legend_id === id);
+    return l ? l.name_ja : '';
+  };
+
   return '<div class="card" style="margin-top:4px">' +
-      '<div class="sub">武器はリザルト画面に出ないので、ここは自己申告です。</div></div>' +
+      '<div class="sub">ここは<b>自己申告</b>です。武器はリザルト画面に出ないため。<br>' +
+      '<b>得意キャラ</b>も「本人が得意と思っているキャラ」を出します。' +
+      '実際にどれだけ使ったかは、<b>マイページの「よく使うキャラ」</b>に出ます。</div></div>' +
+    '<div class="sec">得意キャラ</div>' +
+    [1,2,3].map(i => {
+      const id = dr['legend' + i + '_id'];
+      return '<div class="slot"><span class="sl">' + i + '体目</span>' +
+        '<span class="sn' + (id ? '' : ' empty') + '">' + (id ? esc(lname(id)) : '未設定') + '</span>' +
+        (id ? '<button data-lclear="' + i + '">✕</button>' : '<button data-lpick="' + i + '">選ぶ</button>') +
+      '</div>';
+    }).join('') +
     '<div class="sec">よく使う武器</div>' +
     [1,2].map(i => {
       const id = dr['weapon' + i + '_id'];
@@ -756,6 +773,31 @@ function renderMember(){
     '<button class="btn solid" id="saveMember">保存する</button>' +
     '<button class="btn ghost" id="cancelMember">やめる</button><div style="height:20px"></div>';
 }
+// ===================================================================
+// 得意キャラを選ぶ
+//
+// **自己申告。**マイページの「よく使うキャラ」は実際の使用回数から出るので、
+// あちらとは意味が違う。武器と同じ選び方に揃えてある
+// ===================================================================
+function renderLegendPick(){
+  const dr = S.draft, slot = S.legendSlot;
+  titleEl.textContent = slot + '体目の得意キャラ'; backEl.hidden = false;
+
+  const others = [1,2,3].filter(i => i !== slot).map(i => dr['legend' + i + '_id']).filter(Boolean);
+  const cur = dr['legend' + slot + '_id'];
+  const ls = S.data.legends || [];
+
+  const grid = '<div class="wgrid">' + ls.map(l =>
+    '<button class="wbtn' + (l.legend_id === cur ? ' on' : '') + '" data-l="' + esc(l.legend_id) + '"' +
+    (others.indexOf(l.legend_id) >= 0 ? ' disabled' : '') + '>' + esc(l.name_ja) + '</button>').join('') + '</div>';
+
+  return '<div class="card" style="margin-top:4px"><div class="sub">' +
+      'ぜんぶで <span class="mono" style="color:var(--ink2)">' + ls.length + '体</span>。' +
+      '紫は選んでいるもの。同じキャラは1回だけ選べます（選んだものは押せなくなります）。</div></div>' +
+    grid + '<div style="height:20px"></div>';
+}
+
+
 
 // ===================================================================
 // 武器を選ぶ
@@ -791,6 +833,7 @@ function render(){
   if(S.view === 'goal')        app.innerHTML = renderGoalEdit();
   else if(S.view === 'member') app.innerHTML = renderMember();
   else if(S.view === 'weapon') app.innerHTML = renderWeapon();
+  else if(S.view === 'legend') app.innerHTML = renderLegendPick();
   else                         app.innerHTML = renderMain();
   bind();
 }
@@ -810,6 +853,11 @@ function bind(){
       S.draft = {
         weapon1_id: m.weapons[0] ? m.weapons[0].weapon_id : '',
         weapon2_id: m.weapons[1] ? m.weapons[1].weapon_id : '',
+        // **表示用の legends ではなく legend_ids を使う。**
+        // 表示側は未設定を詰めて返すので、2体目だけ設定した場合に位置がずれる
+        legend1_id: (m.legend_ids || [])[0] || '',
+        legend2_id: (m.legend_ids || [])[1] || '',
+        legend3_id: (m.legend_ids || [])[2] || '',
         note: m.note || ''
       };
       S.view = 'member'; render(); window.scrollTo({ top: 0 });
@@ -868,13 +916,21 @@ function bind(){
   app.querySelectorAll('[data-clear]').forEach(b => {
     b.onclick = () => { pullNote(); S.draft['weapon' + b.dataset.clear + '_id'] = ''; render(); };
   });
+  app.querySelectorAll('[data-lpick]').forEach(b => {
+    b.onclick = () => { pullNote(); S.legendSlot = Number(b.dataset.lpick); S.view = 'legend'; render(); window.scrollTo({ top: 0 }); };
+  });
+  app.querySelectorAll('[data-lclear]').forEach(b => {
+    b.onclick = () => { pullNote(); S.draft['legend' + b.dataset.lclear + '_id'] = ''; render(); };
+  });
   const sm = document.getElementById('saveMember');
   if(sm) sm.onclick = async () => {
     pullNote();
     if(!S.key){ toast('編集キーが要ります。登録タブの設定で入れてください', true); return; }
     try{
       await apiPost({ action:'update_profile', person_id:S.editPerson.person_id,
-        weapon1_id:S.draft.weapon1_id, weapon2_id:S.draft.weapon2_id, note:S.draft.note });
+        weapon1_id:S.draft.weapon1_id, weapon2_id:S.draft.weapon2_id,
+        legend1_id:S.draft.legend1_id, legend2_id:S.draft.legend2_id, legend3_id:S.draft.legend3_id,
+        note:S.draft.note });
       toast('保存しました');
       S.view = 'main'; await load(S.data.split_id);
     }catch(e){ toast(e.message, true); }
@@ -890,8 +946,16 @@ function bind(){
     };
   });
 
+  // ---- 得意キャラ選び ----
+  app.querySelectorAll('[data-l]').forEach(b => {
+    b.onclick = () => {
+      S.draft['legend' + S.legendSlot + '_id'] = b.dataset.l;
+      S.view = 'member'; render(); window.scrollTo({ top: 0 });
+    };
+  });
+
   backEl.onclick = () => {
-    if(S.view === 'weapon'){ S.view = 'member'; }
+    if(S.view === 'weapon' || S.view === 'legend'){ S.view = 'member'; }
     else { S.view = 'main'; }
     render(); window.scrollTo({ top: 0 });
   };
