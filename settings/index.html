@@ -646,7 +646,7 @@ function ingestBlock(){
   // **落ちても画面には何も出ない**（称号が静かに古くなるだけ）ので、ここだけが手がかり
   const a2 = (S.data.admin && S.data.admin.award_sync) || null;
   // 赤く出す状態。いずれも「称号が黙って古くなっている」可能性がある
-  const BADSYNC = ['trigger_dead', 'killed', 'failing', 'stuck'];
+  const BADSYNC = ['trigger_dead', 'killed', 'failing', 'stuck', 'trigger_missing'];
   const syncBlock = !a2 ? '' :
     '<div class="sechead"><div class="t">称号の再集計</div></div>' +
     '<div class="card' + (BADSYNC.indexOf(a2.state) >= 0 ? ' bad' : '') + '">' +
@@ -658,7 +658,8 @@ function ingestBlock(){
             : a2.state === 'unknown' ? 'var(--ink3)'
             : a2.state === 'running' ? 'var(--purple)'
             : a2.state === 'idle' ? 'var(--lime)' : 'var(--lime)') + '">' +
-        (a2.state === 'idle' ? '待ちはありません'
+        (a2.state === 'trigger_missing' ? '仕掛けが入っていません'
+          : a2.state === 'idle' ? '待ちはありません'
           : a2.state === 'running' ? 'いま更新中です'
           : a2.state === 'trigger_dead' ? '止まっています'
           : a2.state === 'stuck' ? '処理できていません'
@@ -695,6 +696,18 @@ function ingestBlock(){
           (a2.trigger_ago_min === null ? esc(String(a2.trigger_at).slice(0,16).replace('T',' '))
             : (a2.trigger_ago_min < 1 ? 'さっき' : a2.trigger_ago_min + '分前')) +
           '</span></div>'
+        : '') +
+      // トリガーが実在するか。**未設置でも警告が出なかった**ので出す
+      (a2.triggers
+        ? '<div class="acc"><span class="n" style="font-size:12px">仕掛け</span>' +
+          '<span class="u" style="font-size:11.5px;color:' + (a2.triggers.ok ? 'var(--lime)' : 'var(--red)') + '">' +
+          (a2.triggers.ok ? '取り込み・シート監視とも入っています'
+            : esc(a2.triggers.note || '不足しています')) + '</span></div>'
+        : '') +
+      (a2.state === 'trigger_missing'
+        ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
+          esc(a2.triggers && a2.triggers.note || '') + '<br>' +
+          'このままだと、スプレッドシートを直接直しても称号が追いつきません。</div>'
         : '') +
       (a2.state === 'idle'
         ? '<div class="sub" style="margin-top:9px">称号を直す必要がある変更はありません。' +

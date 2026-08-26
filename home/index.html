@@ -562,6 +562,24 @@ function render(){
 
   const parts = [];
 
+  // --- 自動処理が止まっている可能性 ---
+  //
+  // 以前は設定画面にしか出していなかったので、
+  // **ホームしか見ない人には永久に届かない。**
+  // 詳細は出さない（この画面は鍵無しで見られる）。宛先だけ示す
+  if(h.health_warn){
+    parts.push(
+      '<div class="alert" style="cursor:default">' +
+        '<div style="text-align:left">' +
+          '<div class="dela" style="font-size:13.5px">自動処理が止まっているかもしれません</div>' +
+          '<div style="font-size:10.5px;margin-top:4px;opacity:.85">' +
+          '取り込みや称号の更新が遅れている可能性があります。' +
+          '詳しくは右上の歯車から見られます。</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
   // --- 未確認バナー。ゼロのときは丸ごと出さない（代わりの文言も出さない） ---
   if(h.pending > 0){
     parts.push(
