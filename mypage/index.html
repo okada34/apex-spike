@@ -144,8 +144,11 @@
      「あとどれくらい」が一目で分かることを優先する */
   .trow .pg{ margin-top:10px; }
   .trow .pgr{ display:flex; align-items:center; gap:8px; margin-top:5px; }
-  .trow .pgn{ font-size:10.5px; color:var(--ink3); width:72px; flex:none;
+  .trow .pgn{ font-size:10.5px; color:var(--ink3); width:84px; flex:none;
               overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* サークルNo.。**並びを固定するための番号**なので、控えめに出す */
+  .trow .pgn .no{ display:inline-block; width:14px; color:var(--ink4);
+                  font-family:'Roboto Mono',monospace; }
   .trow .pgb{ flex:1; height:5px; border-radius:3px; background:var(--sunken); overflow:hidden; }
   .trow .pgf{ height:100%; border-radius:3px; background:var(--purple); }
   /* 1試合の記録（暴れん坊将軍）は積み上げではない。**別物だと分かるよう色を変える** */
@@ -734,7 +737,7 @@ function renderTitles(){
         const pct = Math.round((p.rate || 0) * 100);
         const done = (p.rate || 0) >= 1;
         return '<div class="pgr">' +
-          '<div class="pgn">' + esc(p.name) + '</div>' +
+          '<div class="pgn"><span class="no">' + (p.no && p.no < 900 ? p.no : '') + '</span>' + esc(p.name) + '</div>' +
           '<div class="pgb"><div class="pgf' + (done ? ' done' : (rec ? ' rec' : '')) +
             '" style="width:' + pct + '%"></div></div>' +
           '<div class="pgv">' + n0(p.value) + '/' + n0(t.need) + '</div>' +
