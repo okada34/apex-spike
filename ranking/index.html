@@ -479,7 +479,26 @@ const perEl = document.getElementById('per');
  * 編集キーを要求するので、端末が持っていれば毎回付ける。
  * 集計済みの画面（ホーム・ランキング・サークル・マイページ）は鍵が無くても返る。
  */
+/**
+ * 読み取り。**一時的な失敗は1回だけやり直す。**
+ *
+ * 測定中、Googleから HTTP 404 のHTMLが実際に返ってきた。
+ * 端末に控えが無い初回利用では、その1回で「つながりませんでした」になる。
+ *
+ * やり直すのは、届かなかった・404や5xx・JSONでない応答の3つだけ。
+ * **編集キー違いなど、JSONで返った業務エラーはやり直さない**（何度やっても同じ）。
+ * 1〜3秒ばらけさせて待つ。**2回目も失敗したら、そのまま伝える。**
+ */
 function apiGet(params){
+  return apiGetOnce(params).catch(err => {
+    if(!err || !err.retryable) throw err;
+    const wait = 1000 + Math.floor(Math.random() * 2000);
+    return new Promise(r => setTimeout(r, wait)).then(() => apiGetOnce(params));
+  });
+}
+
+
+function apiGetOnce(params){
   const p = Object.assign({}, params);
   const k = store.get(LS.key) || '';
   if(k) p.key = k;
@@ -487,9 +506,15 @@ function apiGet(params){
   // 「サーバーに届かなかった」と「届いたが断られた」を分ける。
   // 前者だけがオフライン。AUTHで弾かれたのを「つながっていません」と出すと嘘になる
   return fetch(S.url + '?' + q, { method:'GET' })
-    .catch(err => { NET_OK = false; updateFreshBar(); throw err; })
+    .catch(err => { NET_OK = false; updateFreshBar(); err.retryable = true; throw err; })
     .then(r => {
-      if(!r.ok){ NET_OK = false; updateFreshBar(); throw new Error('HTTP ' + r.status); }
+      if(!r.ok){
+        NET_OK = false; updateFreshBar();
+        const he = new Error('HTTP ' + r.status);
+        // 404 と 5xx は Google 側の一時的な不調でも出る。やり直す価値がある
+        he.retryable = (r.status === 404 || r.status >= 500);
+        throw he;
+      }
       // Googleの一時的な不調で、JSONではなくエラーページが返ることがある
       // （性能試験のあいだ、実際に何度も起きた）。読めないなら「届かなかった」扱いにする。
       // ここで r.json() を直に返すと、利用者には構文エラーがそのまま出る
@@ -497,7 +522,9 @@ function apiGet(params){
         try { return JSON.parse(t); }
         catch (e) {
           NET_OK = false; updateFreshBar();
-          throw new Error("サーバーからの応答を読めませんでした");
+          const pe = new Error("サーバーからの応答を読めませんでした");
+          pe.retryable = true;
+          throw pe;
         }
       });
     })
@@ -1212,16 +1239,28 @@ async function load(){
     segEl.hidden = true;
   }
   try{
-    const [d, h] = await Promise.all([
-      apiGet({ action:'ranking', period_kind:S.periodKind, period_value:S.periodValue, axis:S.axis }),
-      apiGet({ action:'home' }).catch(() => null)
-    ]);
+    // === ランキングを先に完成させる ===
+    //
+    // 以前は Promise.all で home と同時に取っていたので、
+    // **ランキングの表示が home の遅さに引きずられて**いた。
+    // 同時に2本のGAS実行を始める負荷も掛かる。
+    //
+    // 登録タブのバッジ（未処理の件数）は、後から差し替えれば足りる。
+    const d = await apiGet({ action:'ranking', period_kind:S.periodKind, period_value:S.periodValue, axis:S.axis });
     S.data = d;
     S.periodKind = d.period.kind;
     S.periodValue = d.period.value;
-    if(h) S.pending = h.pending || 0;
     cacheSet(ck, d);
     render();
+
+    // バッジだけ後から。**変わったときしか描き直さない**（点滅を避ける）
+    apiGet({ action:'home' })
+      .then(h => {
+        const n = (h && h.pending) || 0;
+        if(n !== S.pending){ S.pending = n; render(); }
+      })
+      .catch(() => {});
+
     warmOtherScreens(store.get(LS.person));
   }catch(e){
     if(cached) return;
