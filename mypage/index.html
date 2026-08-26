@@ -140,6 +140,22 @@
   .trow .who2{ font-size:10.5px; color:var(--ink3); margin-left:auto; }
   .trow .who2 b{ color:var(--ink2); font-weight:400; }
 
+  /* 進捗バー。**取れるまでを楽しむための表示**なので、値そのものより
+     「あとどれくらい」が一目で分かることを優先する */
+  .trow .pg{ margin-top:10px; }
+  .trow .pgr{ display:flex; align-items:center; gap:8px; margin-top:5px; }
+  .trow .pgn{ font-size:10.5px; color:var(--ink3); width:72px; flex:none;
+              overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .trow .pgb{ flex:1; height:5px; border-radius:3px; background:var(--sunken); overflow:hidden; }
+  .trow .pgf{ height:100%; border-radius:3px; background:var(--purple); }
+  /* 1試合の記録（暴れん坊将軍）は積み上げではない。**別物だと分かるよう色を変える** */
+  .trow .pgf.rec{ background:var(--yellow); }
+  .trow .pgf.done{ background:var(--lime); }
+  .trow .pgv{ font-family:'Roboto Mono',monospace; font-size:10.5px; color:var(--ink3);
+              width:56px; flex:none; text-align:right; letter-spacing:-.03em; }
+  .trow .need{ font-size:10.5px; color:var(--ink4); margin-top:8px; }
+  .trow .need b{ color:var(--ink2); font-weight:400; }
+
   nav{
     position:fixed; left:0; right:0; bottom:0; z-index:16; height:70px; background:var(--card);
     box-shadow:0 -6px 18px rgba(0,0,0,.38); display:flex; justify-content:center;
@@ -694,12 +710,46 @@ function renderTitles(){
   const d = S.data;
   titleEl.textContent = '称号'; backEl.hidden = false;
   const held = d.titles.filter(t => t.held);
-  const not = d.titles.filter(t => !t.held);
+  const not  = d.titles.filter(t => !t.held);
 
   // 同点のときは持ち主が複数いる。名前が2つ並ぶ理由が分かるよう、印を添える
   // 三銃士は組そのものが同点になることがある（trio.tied）
   const tieMark = t => (t.tied || (t.id === 'three' && (S.data.trio_tied)))
     ? '<span style="font-size:10px;color:var(--yellow);margin-left:6px">同点</span>' : '';
+
+  /**
+   * 各メンバーの進捗バー。
+   *
+   * **「あとどれくらいで取れるか」を出すための表示。**
+   * 以前は下限が無く、初戦で誰かが全部取ってしまい、目指すものが無かった。
+   *
+   * bar='none'（渡り鳥・三銃士）は出さない。
+   * 少ないほど受賞する／3人の組なので、人ごとの進捗が存在しない
+   */
+  const bars = t => {
+    if(!t.need || t.bar === 'none' || !(t.progress || []).length) return '';
+    const rec = t.bar === 'record';
+    return '<div class="pg">' +
+      t.progress.map(p => {
+        const pct = Math.round((p.rate || 0) * 100);
+        const done = (p.rate || 0) >= 1;
+        return '<div class="pgr">' +
+          '<div class="pgn">' + esc(p.name) + '</div>' +
+          '<div class="pgb"><div class="pgf' + (done ? ' done' : (rec ? ' rec' : '')) +
+            '" style="width:' + pct + '%"></div></div>' +
+          '<div class="pgv">' + n0(p.value) + '/' + n0(t.need) + '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+  };
+
+  // 必要値の説明。**なぜまだ誰も持っていないのかが分かるように**
+  const needLine = t => {
+    if(!t.need) return '';
+    if(t.id === 'onehit')    return '<div class="need">1試合で <b>' + n0(t.need) + 'ダメージ</b> 出すと取れます</div>';
+    if(t.id === 'firepower') return '<div class="need">1,000ダメージ超えを <b>' + n0(t.need) + '戦</b> で取れます</div>';
+    if(t.id === 'three')     return '<div class="need">同じ3人で <b>' + n0(t.need) + '戦</b> 組むと出ます</div>';
+    return '<div class="need">いちばん多い人が <b>' + n0(t.need) + esc(t.unit) + '</b> に届くと取れます</div>';
+  };
 
   const row = (t, mine) =>
     '<div class="trow' + (mine ? '' : ' off') + '">' +
@@ -707,10 +757,12 @@ function renderTitles(){
       (mine
         ? '<div class="tv">' + (t.value === null ? '—' : n0(t.value) + esc(t.unit)) + '</div>'
         : '<div class="who2">いまは <b>' + (t.holder_name ? esc(t.holder_name) : '誰も持っていない') + '</b></div>') +
-      '</div><div class="td">' + esc(t.desc) + '</div></div>';
+      '</div><div class="td">' + esc(t.desc) + '</div>' +
+      needLine(t) + bars(t) + '</div>';
 
   return '<div class="card" style="margin-top:4px"><div class="sub">' +
-      'すべてスプリット単位。<span style="color:var(--ink2)">' + esc(d.split_label) + '</span> の集計です。</div></div>' +
+      'すべてスプリット単位。<span style="color:var(--ink2)">' + esc(d.split_label) + '</span> の集計です。<br>' +
+      '<b style="color:var(--ink2)">称号には必要な回数があります。</b>バーは各メンバーの進み具合です。</div></div>' +
     '<div class="sechead"><div class="t">持っている</div><div class="n">' + held.length + '</div></div>' +
     (held.length ? held.map(t => row(t, true)).join('') : '<div class="card"><div class="sub">まだありません</div></div>') +
     '<div class="sechead"><div class="t">まだ持っていない</div><div class="n">' + not.length + '</div></div>' +
