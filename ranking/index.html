@@ -373,6 +373,28 @@ function cacheSet(key, data){
  *   - 控えが20分より古い
  * うまくいっているときは何も出さない。常時出すと、ただの飾りになって読まれなくなる。
  */
+/**
+ * 控えを見せている間、**裏で最新を取りに行っていること**を出す。
+ *
+ * 控えがあると画面はすぐ出るが、数字が前回のままなのか最新なのかが
+ * **利用者からは区別できない。**中身が変わらなければ、更新が終わっても見た目は同じ。
+ * 「もう最新なのか、まだ待つのか」が分からないままだった。
+ */
+function showChecking(on){
+  let el = document.getElementById('checking');
+  if(!on){ if(el) el.remove(); return; }
+  if(el) return;
+  el = document.createElement('div');
+  el.id = 'checking';
+  el.style.cssText =
+    'position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));' +
+    'z-index:55;padding:7px 14px;font-size:12px;line-height:1.4;text-align:center;' +
+    'background:rgba(58,42,90,.94);color:#CBBEF5;border-top:1px solid #4A3A74';
+  el.textContent = '最新を確認しています…';
+  document.body.appendChild(el);
+}
+
+
 function updateFreshBar(){
   const age = SHOWN_KEY ? cacheAge(SHOWN_KEY) : null;
   const old = age !== null && age > CACHE_STALE_MS;
@@ -1232,6 +1254,7 @@ async function load(){
     S.data = cached;
     S.periodKind = cached.period.kind; S.periodValue = cached.period.value;
     render();
+    showChecking(true);          // 裏で最新を取りに行っていることを見せる
   }else{
     app.innerHTML = '<div class="card" style="margin-top:8px">' +
       '<div class="dela" style="font-size:15px">サーバーに聞いています…</div>' +
@@ -1252,6 +1275,7 @@ async function load(){
     S.periodValue = d.period.value;
     cacheSet(ck, d);
     render();
+    showChecking(false);         // ここで「最新に変わった」
 
     // バッジだけ後から。**変わったときしか描き直さない**（点滅を避ける）
     apiGet({ action:'home' })
@@ -1263,6 +1287,7 @@ async function load(){
 
     warmOtherScreens(store.get(LS.person));
   }catch(e){
+    showChecking(false);
     if(cached) return;
     app.innerHTML = '<div class="card" style="margin-top:8px">' +
       '<div class="dela" style="font-size:15px">つながりませんでした</div>' +
