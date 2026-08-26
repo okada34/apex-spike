@@ -566,6 +566,17 @@ function renderMain(){
       '読み取りのたびに選び直してはいません。<b>この1つを使い続けます</b>。' +
       '混雑したときは同じモデルのまま待って、数回やり直します。<br><br>' +
       '撮り逃した試合は、あきらめる作りです。手入力で足す機能はありません。</div></div>' +
+    // === 診断ページへの入口 ===
+    //
+    // ページ自体は前からあるのに、**どの画面からもリンクしていなかった。**
+    // URLを直接打つ以外に行けないので、困ったときに案内できない
+    '<div class="sechead"><div class="t">うまく動かないとき</div></div>' +
+    '<button class="row" id="goCheck"><div><div class="rtitle">この端末をしらべる</div>' +
+      '<div class="rdesc">つながるか・古い控えが残っていないかを見ます</div></div>' + CHEV + '</button>' +
+    '<div class="card"><div class="sub">' +
+      '画面が古いまま変わらない、真っ白になる、といったときに開いてください。<br>' +
+      '<b>この端末に残っている記録を消す</b>と直ることがありますが、' +
+      '<b>編集キーも消えます。</b>登録タブで入れ直しになります。</div></div>' +
     '<div style="height:24px"></div>';
 }
 
@@ -1106,6 +1117,8 @@ function bind(){
   });
   const rc = document.getElementById('rechoose');
   if(rc) rc.onclick = () => { location.href = '../record/'; };
+  const gc = document.getElementById('goCheck');
+  if(gc) gc.onclick = () => { location.href = '../check/'; };
   const of = document.getElementById('openFolder');
   if(of) of.onclick = () => { window.open(S.data.admin.folder_url, '_blank'); };
 
