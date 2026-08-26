@@ -491,7 +491,13 @@ function apiGetOnce(params){
 
 /** 書き込み。GASのCORS制約により Content-Type は text/plain にする */
 function apiPost(body){
-  const payload = Object.assign({}, body, { edit_key: S.key, person_id: S.personId });
+  // === 操作した人と、対象の人を分ける ===
+  //
+  // 以前は両方 person_id で、**Object.assign の後ろ勝ちで
+  // 対象が端末の持ち主に上書きされていた。**
+  // 「マン坊の名前を直したら、自分の名前が変わる」が実際に起きた。
+  // 紐づけも、選んだ人ではなく端末の持ち主に付いてしまう
+  const payload = Object.assign({}, body, { edit_key: S.key, actor_person_id: S.personId });
   markSaving(1);
   return fetch(S.url, {
       method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' },
