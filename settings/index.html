@@ -646,7 +646,7 @@ function ingestBlock(){
   // **落ちても画面には何も出ない**（称号が静かに古くなるだけ）ので、ここだけが手がかり
   const a2 = (S.data.admin && S.data.admin.award_sync) || null;
   // 赤く出す状態。いずれも「称号が黙って古くなっている」可能性がある
-  const BADSYNC = ['trigger_dead', 'killed', 'failing', 'stuck', 'trigger_missing'];
+  const BADSYNC = ['trigger_dead', 'killed', 'failing', 'stuck', 'trigger_missing', 'dirty_reserve_failed'];
   const syncBlock = !a2 ? '' :
     '<div class="sechead"><div class="t">称号の再集計</div></div>' +
     '<div class="card' + (BADSYNC.indexOf(a2.state) >= 0 ? ' bad' : '') + '">' +
@@ -659,6 +659,7 @@ function ingestBlock(){
             : a2.state === 'running' ? 'var(--purple)'
             : a2.state === 'idle' ? 'var(--lime)' : 'var(--lime)') + '">' +
         (a2.state === 'trigger_missing' ? '仕掛けが入っていません'
+          : a2.state === 'dirty_reserve_failed' ? '予約に失敗しています'
           : a2.state === 'idle' ? '待ちはありません'
           : a2.state === 'running' ? 'いま更新中です'
           : a2.state === 'trigger_dead' ? '止まっています'
@@ -729,6 +730,12 @@ function ingestBlock(){
         ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
           '前回の再集計が最後まで行きませんでした（6分の上限に当たった可能性）。' +
           '称号が古いままのおそれがあります。</div>'
+        : a2.state === 'dirty_reserve_failed'
+        ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
+          '再集計の予約に失敗しています。書き込みそのものは成功していますが、' +
+          '<b>称号が古いままになっている可能性があります。</b>' +
+          '「称号を計算し直す」を押すと追いつきます。' +
+          (a2.reserve_error ? '<br>' + esc(a2.reserve_error) : '') + '</div>'
         : a2.state === 'failing'
         ? '<div class="sub" style="margin-top:9px;color:var(--red)">' +
           '称号が古いまま止まっている可能性があります。</div>'
