@@ -38,7 +38,10 @@ body{
   font-family:var(--rr); font-size:16px; line-height:1.85;
   -webkit-font-smoothing:antialiased;
 }
-.wrap{ max-width:760px; margin:0 auto; padding:0 20px 100px; }
+/* viewport-fit=cover なので、上下のセーフエリアは自分で避ける。
+     iPhoneで時計・電池と重なった */
+  .wrap{ max-width:760px; margin:0 auto;
+        padding:env(safe-area-inset-top) 20px calc(100px + env(safe-area-inset-bottom)); }
 p{ margin:0 0 1em; }
 strong{ color:var(--lime); font-weight:400; }
 em{ font-style:normal; color:var(--yellow); }

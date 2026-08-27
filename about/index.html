@@ -42,7 +42,10 @@ body{
   font-family:var(--rr); font-size:16px; line-height:1.85;
   -webkit-font-smoothing:antialiased; overflow-x:hidden;
 }
-.wrap{ max-width:820px; margin:0 auto; padding:0 20px 90px; }
+/* viewport-fit=cover なので、上下のセーフエリアは自分で避ける。
+     iPhoneで時計・電池と重なった */
+  .wrap{ max-width:820px; margin:0 auto;
+        padding:env(safe-area-inset-top) 20px calc(90px + env(safe-area-inset-bottom)); }
 p{ margin:0 0 1em; }
 strong{ color:var(--lime); font-weight:400; }
 em{ font-style:normal; color:var(--yellow); }
@@ -258,8 +261,8 @@ code{ font-family:var(--mono); font-size:.86em; background:var(--sunken);
     <div class="t good"><div class="nm">横井庄一王</div><div class="ds">味方が全滅しても一人で戦い続けた人</div></div>
     <div class="t good"><div class="nm">火力番長</div><div class="ds">1試合1,500ダメージ超えを量産した人</div></div>
     <div class="t good"><div class="nm">介護士</div><div class="ds">いちばん味方を起こしている人</div></div>
-    <div class="t good"><div class="nm">一撃屋</div><div class="ds">1試合の最高ダメージ記録の保持者</div></div>
-    <div class="t good"><div class="nm">手数王</div><div class="ds">キルにならなくても削り続ける人</div></div>
+    <div class="t good"><div class="nm">暴れん坊将軍</div><div class="ds">1試合で1,800ダメージ以上を出した人</div></div>
+    <div class="t good"><div class="nm">お膳立て王</div><div class="ds">キルにならなくても削り続ける人</div></div>
     <div class="t good"><div class="nm">皆勤賞</div><div class="ds">このスプリットでいちばん出た人</div></div>
     <div class="t good"><div class="nm">蘇生術師</div><div class="ds">いちばん味方をリスポーンさせている人</div></div>
     <div class="t good"><div class="nm">三銃士</div><div class="ds">いちばん組んでいる3人の組み合わせ</div></div>
@@ -327,7 +330,7 @@ code{ font-family:var(--mono); font-size:.86em; background:var(--sunken);
     <div class="sc">
       <div class="art">
         <div style="margin-bottom:5px"><span class="a-badge">横井庄一王</span><span class="a-badge">火力番長</span></div>
-        <div><span class="a-badge">介護士</span><span class="a-badge">一撃屋</span></div>
+        <div><span class="a-badge">介護士</span><span class="a-badge">暴れん坊将軍</span></div>
         <div style="font-family:var(--mono);font-weight:700;font-size:9px;color:var(--ink3);margin-top:8px">6 / 15</div>
       </div>
       <div>
