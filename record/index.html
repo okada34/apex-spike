@@ -609,6 +609,13 @@ function warmOtherScreens(myPersonId){
   let i = 0;
   const next = () => {
     if(i >= jobs.length) return;
+    // **画面が待っている写真を、裏の先読みで追い越さない。**
+    // サーバーは1本ずつしか処理しないので、7本も割り込ませると
+    // 400KBの写真が何十秒も後ろで待たされ、そのまま失敗していた
+    if(Object.keys(S.images).some(k => S.images[k] === 'loading')){
+      setTimeout(next, 900);
+      return;
+    }
     const [key, params] = jobs[i++];
     // すでに新しい控えがあるなら飛ばす（5分もてば十分）
     let fresh = false;
@@ -1120,15 +1127,48 @@ function paintSection(id, title, rows, mod, note){
   });
 }
 
-/** 一覧を開いた時点で裏で画像を取り始める。タップ時の待ち時間を消すため */
+/** その控えが「そのまま <img> に入れられる中身」かどうか */
+function usableImage(v){ return !!v && v !== 'loading' && v !== 'failed'; }
+
+/**
+ * 一覧を開いた時点で裏で画像を取り始める。タップ時の待ち時間を消すため。
+ *
+ * **1回失敗したら二度と出ない、という作りだった。**
+ * スクショは400KB前後あり、サーバーが混んでいると平気で失敗する。
+ * それを黙って捨てていたので、利用者には**空の枠が永久に残る**だけだった。
+ * 3回まで試し、間隔を空ける。**それでもだめなら「だめだった」と画面に出す。**
+ */
 function prefetchImages(ids){
   ids.filter(Boolean).forEach(id => {
     if(S.images[id]) return;
     S.images[id] = 'loading';
-    apiGet({ action:'image_thumb', file_id:id, w:1600 })
-      .then(r => { S.images[id] = 'data:' + r.mime_type + ';base64,' + r.data_base64; paintImage(id); })
-      .catch(() => { delete S.images[id]; });
+    tryImage(id, 1);
   });
+}
+
+function tryImage(id, attempt){
+  apiGet({ action:'image_thumb', file_id:id, w:1600 })
+    .then(r => {
+      if(!r || !r.data_base64) throw new Error(r && r.error ? r.error : '中身が空でした');
+      S.images[id] = 'data:' + r.mime_type + ';base64,' + r.data_base64;
+      paintImage(id);
+    })
+    .catch(() => {
+      if(attempt < 3){
+        S.images[id] = 'loading';
+        setTimeout(() => tryImage(id, attempt + 1), attempt * 2500);
+        return;
+      }
+      S.images[id] = 'failed';
+      paintImageFailed(id);
+    });
+}
+
+/** もう一度取りに行く。押した瞬間に「読み込み中」へ戻す */
+function retryImage(id){
+  S.images[id] = 'loading';
+  paintImageLoading(id);
+  tryImage(id, 1);
 }
 /**
  * 届いた画像を画面へ入れる。
@@ -1143,7 +1183,7 @@ function prefetchImages(ids){
 
 function paintImage(fileId){
   const src = S.images[fileId];
-  if(!src || src === 'loading') return;
+  if(!usableImage(src)) return;
 
   // 試合の詳細（1枚）
   const img = document.getElementById('shot');
@@ -1173,10 +1213,45 @@ function paintImage(fileId){
   });
 }
 
+/** 取れなかったことを画面に出す。**空の枠のままにしない** */
+function paintImageFailed(fileId){
+  const box = document.getElementById('shotbox');
+  const img = document.getElementById('shot');
+  if(box && img && img.dataset.fileId === fileId){
+    box.hidden = false; img.hidden = true;
+    box.innerHTML = '<div style="text-align:center">' +
+      '<div class="sub">スクショを読み込めませんでした</div>' +
+      '<button class="btn ghost" id="shotretry" style="width:auto;margin-top:9px;padding:0 18px;height:36px">もう一度</button></div>';
+    const rb = document.getElementById('shotretry');
+    if(rb) rb.onclick = () => retryImage(fileId);
+  }
+  const w = document.getElementById('peekwait');
+  const pk = document.getElementById('peekimg');
+  if(w && pk && pk.dataset.fileId === fileId){
+    w.innerHTML = '<span>読み込めませんでした</span>' +
+      '<button class="btn ghost" id="peekretry" style="width:auto;margin-left:10px;padding:0 14px;height:32px">もう一度</button>';
+    const pb = document.getElementById('peekretry');
+    if(pb) pb.onclick = () => retryImage(fileId);
+  }
+}
+
+/** もう一度取りに行くあいだの表示に戻す */
+function paintImageLoading(fileId){
+  const box = document.getElementById('shotbox');
+  const img = document.getElementById('shot');
+  if(box && img && img.dataset.fileId === fileId){
+    box.hidden = false; img.hidden = true;
+    box.innerHTML = '<span class="sub">リザルト画面のスクショ</span>';
+  }
+  const w = document.getElementById('peekwait');
+  const pk = document.getElementById('peekimg');
+  if(w && pk && pk.dataset.fileId === fileId) w.textContent = 'スクショを読み込み中…';
+}
+
 /** いま手元にある画像を、画面の枠へすべて入れ直す */
 function paintAllImages(){
   Object.keys(S.images).forEach(function (id) {
-    if (S.images[id] && S.images[id] !== 'loading') paintImage(id);
+    if (usableImage(S.images[id])) paintImage(id);
   });
 }
 
@@ -1258,11 +1333,11 @@ function renderDetail(){
   titleEl.textContent = totalSeq ? (m.seq + '戦目 / 全' + totalSeq + '戦') : '試合の詳細';
 
   app.innerHTML = `
-    <div id="shotbox" class="shotbox"${cached && cached !== 'loading' ? ' hidden' : ''}>
+    <div id="shotbox" class="shotbox"${usableImage(cached) ? ' hidden' : ''}>
       <span class="sub">リザルト画面のスクショ</span>
     </div>
     <img class="shot" id="shot" data-file-id="${esc(m.image_ref)}"
-         src="${cached && cached !== 'loading' ? cached : ''}"${cached && cached !== 'loading' ? '' : ' hidden'} alt="リザルト画面">
+         src="${usableImage(cached) ? cached : ''}"${usableImage(cached) ? '' : ' hidden'} alt="リザルト画面">
 
     <div id="trio"></div>
     <div id="reason"></div>
@@ -1437,7 +1512,9 @@ function renderDetail(){
     bar.parentNode.insertBefore(hint, bar);
   }
 
-  if(cached === 'loading' || !cached) prefetchImages([m.image_ref]);
+  // 失敗したままの控えは、勝手に取り直さず「もう一度」を出す
+  if(S.images[m.image_ref] === 'failed') paintImageFailed(m.image_ref);
+  else if(cached === 'loading' || !cached) prefetchImages([m.image_ref]);
   window.scrollTo(0, 0);
 
   // **描き直したので、手元にある画像を入れ直す。**
@@ -1769,7 +1846,7 @@ function openLegendSheet(entryId, accountId, onPick, opt){
 
   // 届いていれば今すぐ出す。まだなら枠だけ出して、届いた時に paintImage が入れる
   const peekRaw = opt.shotId ? S.images[opt.shotId] : '';
-  const peekSrc = (peekRaw && peekRaw !== 'loading') ? peekRaw : '';
+  const peekSrc = usableImage(peekRaw) ? peekRaw : '';
 
   const sheet = document.createElement('div');
   sheet.className = 'sheet';
@@ -1822,8 +1899,13 @@ function openLegendSheet(entryId, accountId, onPick, opt){
   // 見出しは上に貼り付いたままなので、そこからいつでも開けるようにする
   const pt = sheet.querySelector('#peektop');
   if(pt) pt.onclick = showShot;
+  // 失敗したままなら「もう一度」を出す。取りに行っていなければ取りに行く
+  if(opt.shotId && !peekSrc){
+    if(S.images[opt.shotId] === 'failed') paintImageFailed(opt.shotId);
+    else prefetchImages([opt.shotId]);
+  }
   // まだ届いていなければ取りに行く。届いたぶんは paintImage が入れてくれる
-  if(opt.shotId && !peekSrc) prefetchImages([opt.shotId]);
+
   sheet.onclick = ev => { if(ev.target === sheet) close(); };
   // 呼び出し元が受け取り方を決める。試合の詳細では即保存、まとめ選択では手元に貯める
   const pick = onPick || (id => setLegend(entryId, id));
@@ -2243,9 +2325,10 @@ function renderBulk(){
         <span class="bpl">${m.squad_place === null ? '順位なし' : m.squad_place + '位'}</span>
         ${i > 0 ? `<button class="bsame" data-same="${i}" ${canSame ? '' : 'disabled'}>上と同じ構成にする</button>` : ''}
       </div>
-      ${cached && cached !== 'loading'
+      ${usableImage(cached)
         ? `<img class="bshot" src="${cached}" data-file-id="${esc(m.image_ref)}" alt="リザルト画面">`
-        : `<div class="bshotbox" data-file-id="${esc(m.image_ref)}"><span class="sub">スクショ読み込み中…</span></div>`}
+        : `<div class="bshotbox" data-file-id="${esc(m.image_ref)}"><span class="sub">${
+            cached === 'failed' ? '読み込めませんでした' : 'スクショ読み込み中…'}</span></div>`}
       <div class="bslots">${slots}</div>
     </div>`;
   }).join('');
