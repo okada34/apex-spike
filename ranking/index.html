@@ -261,6 +261,13 @@
   @media (prefers-reduced-motion: reduce){
     button:not(:disabled):active, .btn:not(:disabled):active, .row:not(:disabled):active { transform:none; }
   }
+
+  /* === hidden を必ず効かせる ===
+     ブラウザ標準の [hidden]{display:none} は**弱い**ので、
+     .shotbox{display:flex} のような指定に負ける。
+     「隠したのに見えている」が実際に起きた（スクショの枠が画像と二重に出た）。
+     どの画面でも同じ罠があるので、まとめて塞ぐ */
+  [hidden]{ display:none !important; }
 </style>
 </head>
 <body>

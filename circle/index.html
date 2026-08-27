@@ -977,9 +977,14 @@ function bind(){
     b.onclick = () => { pullNote(); openLegendSheet(Number(b.dataset.lpick)); };
   });
   const sm = document.getElementById('saveMember');
+  // 保存中はボタンを止める。**押せたことが伝わらないと二度押しされる。**
+  // サーバー側にもロックを入れてあるが、画面でも止めたほうが伝わる
   if(sm) sm.onclick = async () => {
+    if(sm.disabled) return;
     pullNote();
     if(!S.key){ toast('編集キーが要ります。登録タブの設定で入れてください', true); return; }
+    const label = sm.textContent;
+    sm.disabled = true; sm.textContent = '保存しています…';
     try{
       await apiPost({ action:'update_profile', person_id:S.editPerson.person_id,
         weapon1_id:S.draft.weapon1_id, weapon2_id:S.draft.weapon2_id,
@@ -987,7 +992,11 @@ function bind(){
         note:S.draft.note });
       toast('保存しました');
       S.view = 'main'; await load(S.data.split_id);
-    }catch(e){ toast(e.message, true); }
+    }catch(e){
+      toast(e.message, true);
+    }finally{
+      sm.disabled = false; sm.textContent = label;
+    }
   };
   const cm = document.getElementById('cancelMember');
   if(cm) cm.onclick = () => { S.view = 'main'; render(); window.scrollTo({ top: 0 }); };
