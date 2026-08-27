@@ -35,9 +35,13 @@
          padding-bottom:calc(70px + env(safe-area-inset-bottom)); }
   main{ flex:1; padding-bottom:14px; }
 
+  /* === iPhoneのノッチ・時計を避ける ===
+     viewport-fit=cover は画面の端まで描く指定なので、
+     **上下とも自分で避ける必要がある。**下だけ避けていて上が抜けており、
+     iPhoneで時計・電池と重なって歯車が押せなかった */
   header{
     position:sticky; top:0; z-index:20; background:var(--ground);
-    padding:16px 18px 12px; display:flex; align-items:center; gap:11px;
+    padding:calc(16px + env(safe-area-inset-top)) 18px 12px; display:flex; align-items:center; gap:11px;
   }
   header .ttl{ font-family:'Dela Gothic One',sans-serif; font-size:17px; }
   .iconbtn{ background:none; border:0; padding:6px; display:flex; align-items:center; cursor:pointer; }
@@ -158,8 +162,10 @@
   .btn.solid{ background:var(--lime); border-color:var(--lime); color:var(--invert); font-family:'Dela Gothic One',sans-serif; }
   .warn{ background:var(--card); border:1.5px solid var(--red); border-radius:16px; padding:14px 15px; margin:0 18px 10px; }
 
+    /* box-sizing:border-box なので、height を固定したまま padding-bottom を足すと
+       **中身がそのぶん潰れてアイコンがはみ出す。**高さ自体を伸ばす */
   nav{
-    position:fixed; left:0; right:0; bottom:0; z-index:16; height:70px; background:var(--card);
+    position:fixed; left:0; right:0; bottom:0; z-index:16; height:calc(70px + env(safe-area-inset-bottom)); background:var(--card);
     box-shadow:0 -6px 18px rgba(0,0,0,.38); display:flex; justify-content:center;
     padding-bottom:env(safe-area-inset-bottom);
   }
