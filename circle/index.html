@@ -207,6 +207,25 @@
   @media (prefers-reduced-motion: reduce){
     button:not(:disabled):active, .btn:not(:disabled):active, .row:not(:disabled):active { transform:none; }
   }
+
+  /* ===== 得意キャラを選ぶ（登録画面と同じUIに揃える） =====
+     以前はクラス分けの無い平たい一覧だった。
+     **同じ「キャラを選ぶ」なのに見た目が違うと、毎回読み直すことになる** */
+  .sheet{ position:fixed; inset:0; z-index:40; background:rgba(10,6,30,.75); display:flex; align-items:flex-end; }
+  .sheetinner{
+    background:var(--ground); border-radius:22px 22px 0 0; width:100%; max-width:430px; margin:0 auto;
+    max-height:86vh; overflow:auto; padding:18px 18px 28px;
+  }
+  .lgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:7px; margin:8px 0 16px; }
+  .lgrid button{
+    padding:12px 6px; background:var(--sunken); border:0; border-left:3px solid var(--line);
+    border-radius:10px; color:var(--ink); font-family:'RocknRoll One',sans-serif; font-size:12.5px; cursor:pointer;
+  }
+  .lgrid button:disabled{ opacity:.34; cursor:default; }
+  .lgrid button.on{ background:var(--purple); color:#fff; }
+  .clsline{ display:flex; align-items:center; gap:8px; margin-top:16px; font-family:'Dela Gothic One',sans-serif; font-size:13px; }
+  .dot{ width:10px; height:10px; border-radius:50%; flex:none; }
+
 </style>
 </head>
 <body>
@@ -419,6 +438,12 @@ const S = {
   pending: 0,
   saving: 0
 };
+
+// 登録画面と同じ色・同じ並び。**UIを揃えるので定義も同じにする**
+const CLASS_COLOR = {
+  assault:'#E2504E', skirmisher:'#D4C247', recon:'#A855F7', support:'#4A8FE0', controller:'#5BBE5B'
+};
+const CLASS_ORDER = ['assault','skirmisher','recon','support','controller'];
 
 const app = document.getElementById('app');
 const titleEl = document.getElementById('title');
@@ -638,9 +663,9 @@ function renderMain(){
       '<div class="mh"><div class="mn">' + esc(m.name) + '</div>' +
       '<div class="mg">' + m.games + '戦</div></div>' +
       '<div class="mblk"><div class="bl">得意キャラ</div>' + legs + '</div>' +
-      '<div class="mblk"><div class="bl">よく使う武器</div>' + ws + '</div>' +
+      '<div class="mblk"><div class="bl">得意武器</div>' + ws + '</div>' +
       '<div class="mnote' + (m.note ? '' : ' empty') + '">' + (m.note ? esc(m.note) : '一言はまだ書かれていない') + '</div>' +
-      '<div class="medit"><button data-editm="' + esc(m.person_id) + '">武器と一言を直す</button></div>' +
+      '<div class="medit"><button data-editm="' + esc(m.person_id) + '">得意キャラ・武器・一言を直す</button></div>' +
     '</div>';
   }).join('');
 
@@ -754,15 +779,15 @@ function renderMember(){
       const id = dr['legend' + i + '_id'];
       return '<div class="slot"><span class="sl">' + i + '体目</span>' +
         '<span class="sn' + (id ? '' : ' empty') + '">' + (id ? esc(lname(id)) : '未設定') + '</span>' +
-        (id ? '<button data-lclear="' + i + '">✕</button>' : '<button data-lpick="' + i + '">選ぶ</button>') +
+        '<button data-lpick="' + i + '">' + (id ? '変更' : '選ぶ') + '</button>' +
       '</div>';
     }).join('') +
-    '<div class="sec">よく使う武器</div>' +
+    '<div class="sec">得意武器</div>' +
     [1,2].map(i => {
       const id = dr['weapon' + i + '_id'];
       return '<div class="slot"><span class="sl">' + i + '丁目</span>' +
         '<span class="sn' + (id ? '' : ' empty') + '">' + (id ? esc(wname(id)) : '未設定') + '</span>' +
-        (id ? '<button data-clear="' + i + '">✕</button>' : '<button data-pick="' + i + '">選ぶ</button>') +
+        '<button data-pick="' + i + '">' + (id ? '変更' : '選ぶ') + '</button>' +
       '</div>';
     }).join('') +
     '<div class="sec">一言</div>' +
@@ -776,25 +801,51 @@ function renderMember(){
 // ===================================================================
 // 得意キャラを選ぶ
 //
-// **自己申告。**マイページの「よく使うキャラ」は実際の使用回数から出るので、
-// あちらとは意味が違う。武器と同じ選び方に揃えてある
+// **登録画面と同じUI**（クラス分け・同じ色・同じ並び）に揃えている。
+// 同じ「キャラを選ぶ」なのに見た目が違うと、毎回読み直すことになる。
+//
+// 画面遷移ではなく下から出るシートにしたので、選んだらその場に戻る
 // ===================================================================
-function renderLegendPick(){
-  const dr = S.draft, slot = S.legendSlot;
-  titleEl.textContent = slot + '体目の得意キャラ'; backEl.hidden = false;
+function openLegendSheet(slot){
+  const dr = S.draft;
+  const legends = S.data.legends || [];
+  const clsName = {};
+  (S.data.legend_classes || []).forEach(c => clsName[c.id] = c.name_ja);
 
   const others = [1,2,3].filter(i => i !== slot).map(i => dr['legend' + i + '_id']).filter(Boolean);
   const cur = dr['legend' + slot + '_id'];
-  const ls = S.data.legends || [];
 
-  const grid = '<div class="wgrid">' + ls.map(l =>
-    '<button class="wbtn' + (l.legend_id === cur ? ' on' : '') + '" data-l="' + esc(l.legend_id) + '"' +
-    (others.indexOf(l.legend_id) >= 0 ? ' disabled' : '') + '>' + esc(l.name_ja) + '</button>').join('') + '</div>';
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  sheet.innerHTML = `
+    <div class="sheetinner">
+      <div class="spread">
+        <span class="dela" style="font-size:17px">${slot}体目の得意キャラ</span>
+        <button class="btn ghost" style="width:auto;height:40px;padding:0 16px" id="lclose">閉じる</button>
+      </div>
+      <div class="sub" style="margin-top:10px">紫は選んでいるもの。同じキャラは1回だけ選べます。</div>
 
-  return '<div class="card" style="margin-top:4px"><div class="sub">' +
-      'ぜんぶで <span class="mono" style="color:var(--ink2)">' + ls.length + '体</span>。' +
-      '紫は選んでいるもの。同じキャラは1回だけ選べます（選んだものは押せなくなります）。</div></div>' +
-    grid + '<div style="height:20px"></div>';
+      ${CLASS_ORDER.filter(cid => legends.some(l => l.legend_class === cid)).map(cid => `
+        <div class="clsline"><span class="dot" style="background:${CLASS_COLOR[cid]}"></span>${esc(clsName[cid] || cid)}</div>
+        <div class="lgrid">${legends.filter(l => l.legend_class === cid).map(l =>
+          `<button data-legend="${esc(l.legend_id)}" class="${l.legend_id === cur ? 'on' : ''}"
+             style="border-left-color:${CLASS_COLOR[cid]}"
+             ${others.indexOf(l.legend_id) >= 0 ? 'disabled' : ''}>${esc(l.name_ja)}</button>`
+        ).join('')}</div>
+      `).join('')}
+
+      <button class="btn ghost" id="lclear">未設定にする</button>
+    </div>`;
+  document.body.appendChild(sheet);
+
+  const close = () => sheet.remove();
+  sheet.querySelector('#lclose').onclick = close;
+  sheet.onclick = ev => { if(ev.target === sheet) close(); };
+  const pick = id => { pullNote(); S.draft['legend' + slot + '_id'] = id; close(); render(); };
+  sheet.querySelector('#lclear').onclick = () => pick('');
+  sheet.querySelectorAll('[data-legend]').forEach(b => {
+    b.onclick = () => pick(b.dataset.legend);
+  });
 }
 
 
@@ -822,7 +873,10 @@ function renderWeapon(){
   return '<div class="card" style="margin-top:4px"><div class="sub">' +
       '7つの武器種、ぜんぶで <span class="mono" style="color:var(--ink2)">' + ws.length + '丁</span>。' +
       '紫は選んでいるもの。同じ武器は2丁えらべません（選んだものは押せなくなります）。</div></div>' +
-    body + '<div style="height:20px"></div>';
+    body +
+    // **未設定に戻せるようにする。**以前は ✕ を押すしか無かった
+    '<button class="btn ghost" id="wclear">未設定にする</button>' +
+    '<div style="height:20px"></div>';
 }
 
 // ===================================================================
@@ -833,7 +887,6 @@ function render(){
   if(S.view === 'goal')        app.innerHTML = renderGoalEdit();
   else if(S.view === 'member') app.innerHTML = renderMember();
   else if(S.view === 'weapon') app.innerHTML = renderWeapon();
-  else if(S.view === 'legend') app.innerHTML = renderLegendPick();
   else                         app.innerHTML = renderMain();
   bind();
 }
@@ -913,14 +966,8 @@ function bind(){
   app.querySelectorAll('[data-pick]').forEach(b => {
     b.onclick = () => { pullNote(); S.weaponSlot = Number(b.dataset.pick); S.view = 'weapon'; render(); window.scrollTo({ top: 0 }); };
   });
-  app.querySelectorAll('[data-clear]').forEach(b => {
-    b.onclick = () => { pullNote(); S.draft['weapon' + b.dataset.clear + '_id'] = ''; render(); };
-  });
   app.querySelectorAll('[data-lpick]').forEach(b => {
-    b.onclick = () => { pullNote(); S.legendSlot = Number(b.dataset.lpick); S.view = 'legend'; render(); window.scrollTo({ top: 0 }); };
-  });
-  app.querySelectorAll('[data-lclear]').forEach(b => {
-    b.onclick = () => { pullNote(); S.draft['legend' + b.dataset.lclear + '_id'] = ''; render(); };
+    b.onclick = () => { pullNote(); openLegendSheet(Number(b.dataset.lpick)); };
   });
   const sm = document.getElementById('saveMember');
   if(sm) sm.onclick = async () => {
@@ -939,6 +986,11 @@ function bind(){
   if(cm) cm.onclick = () => { S.view = 'main'; render(); window.scrollTo({ top: 0 }); };
 
   // ---- 武器選び ----
+  const wc = document.getElementById('wclear');
+  if(wc) wc.onclick = () => {
+    S.draft['weapon' + S.weaponSlot + '_id'] = '';
+    S.view = 'member'; render(); window.scrollTo({ top: 0 });
+  };
   app.querySelectorAll('[data-w]').forEach(b => {
     b.onclick = () => {
       S.draft['weapon' + S.weaponSlot + '_id'] = b.dataset.w;
@@ -946,16 +998,8 @@ function bind(){
     };
   });
 
-  // ---- 得意キャラ選び ----
-  app.querySelectorAll('[data-l]').forEach(b => {
-    b.onclick = () => {
-      S.draft['legend' + S.legendSlot + '_id'] = b.dataset.l;
-      S.view = 'member'; render(); window.scrollTo({ top: 0 });
-    };
-  });
-
   backEl.onclick = () => {
-    if(S.view === 'weapon' || S.view === 'legend'){ S.view = 'member'; }
+    if(S.view === 'weapon'){ S.view = 'member'; }
     else { S.view = 'main'; }
     render(); window.scrollTo({ top: 0 });
   };

@@ -112,6 +112,20 @@
   }
   .mrow.bad{ border-left:4px solid var(--red); }
   .mrow.dim{ background:var(--sunken); color:var(--ink4); }
+
+  /* === 1戦のまとまりを見せる ===
+     10戦並ぶと「7戦目はどれだっけ」「あと何戦ある？」が分からなくなる。
+     戦数を大きな番号として左に固定し、行の頭で区切りが見えるようにする */
+  .mrow{ display:flex; gap:13px; align-items:flex-start; }
+  .mrow .seqno{
+    flex:none; width:42px; height:42px; border-radius:13px; background:var(--sunken);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  }
+  .mrow.bad .seqno{ background:rgba(255,84,112,.16); }
+  .mrow .seqno .n{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:17px; line-height:1; letter-spacing:-.05em; }
+  .mrow .seqno .u{ font-size:8.5px; color:var(--ink4); line-height:1; }
+  .mrow .body{ flex:1; min-width:0; }
+
   .pill{ font-size:9.5px; padding:3px 9px; border-radius:20px; flex:none; white-space:nowrap; }
   .pill.red{ background:var(--red); color:#fff; }
   .pill.lime{ background:var(--lime); color:var(--invert); }
@@ -513,7 +527,8 @@ const S = {
   bulk: null,     // キャラまとめ修正で読み込んだセッション
   details: {},    // match_id → 詳細。行き来のたびに取りに行かないための控え
   images: {},     // file_id → dataURL（先読みしたスクショ）
-  pending: 0      // 送信中の件数
+  pending: 0,     // 送信中の件数
+  failedList: null   // 読めなかった画像の一覧。諦める前に見せる
 };
 
 // レジェンドのクラス色。依頼者提供の公式色に合わせる
@@ -863,16 +878,24 @@ function paintList(){
       <span class="sub" style="color:var(--ink2)">スクショ <span class="mono" style="font-size:12px;color:var(--ink)">${c.not_imported}枚</span> を取り込み中</span>
     </div>` : '<div style="height:14px"></div>'}
 
-    ${c.failed_in_queue ? `
-    <div class="card red"><div class="spread"><span class="pill red">取り込み失敗 ${c.failed_in_queue}件</span></div>
-      <div class="sub" style="margin-top:8px">リザルト以外のタブなど、読めなかった画像です。<b>設定＞取り込みの結果</b>で、どの画像がなぜ駄目だったかを見られます。</div>
-      <div class="sub" style="margin-top:8px">撮り直せないものは<b>諦めてください。</b>そうしないと、次に本当の失敗が起きても気づけません。</div>
-      <button class="btn ghost" id="giveUp" style="margin-top:12px">${c.failed_in_queue}件とも諦める</button>
-    </div>` : ''}
 
     <div id="secBad"></div>
     <div id="secOk"></div>
     <div id="secDone"></div>
+
+    <!-- === 取り込み失敗は下に置く ===
+         いちばん上に赤い枠で出ていたが、**やることは何も無い**。
+         毎回まっさきに目に入ると、アプリを開くのが億劫になる。
+         かといって隠すと本当の失敗に気づけないので、下で静かに出す -->
+    ${c.failed_in_queue ? `
+    <div class="card" style="margin-top:14px;border-left:4px solid var(--ink4)">
+      <div class="spread"><span class="sub" style="color:var(--ink2)">読めなかった画像 ${c.failed_in_queue}件</span></div>
+      <div class="sub" style="margin-top:8px">リザルト以外のタブなど、読み取れなかった画像です。<b>試合にはなっていません。</b></div>
+      <div class="sub" style="margin-top:8px">撮り直せないものは諦めてください。溜めたままだと、次に本当の失敗が起きても気づけません。</div>
+      <button class="btn ghost" id="seeFailed" style="margin-top:12px">どの画像か見る</button>
+      <div id="failedBox"></div>
+      <button class="btn ghost" id="giveUp" style="margin-top:10px">${c.failed_in_queue}件とも諦める</button>
+    </div>` : ''}
   `;
 
   paintSection('secBad', '先に直すもの', bad, 'bad', 'キル数が合わない試合などを先頭に固定しています。');
@@ -904,6 +927,8 @@ function paintList(){
   app.appendChild(bulkBtn);
 
   const gu = document.getElementById('giveUp');
+  const sf = document.getElementById('seeFailed');
+  if(sf) sf.onclick = () => showFailed(sf);
   if(gu) gu.onclick = () => giveUpFailed(gu);
 
   // 途中で閉じていたら、その試合から再開できるようにする
@@ -927,21 +952,26 @@ function paintSection(id, title, rows, mod, note){
     const b = document.createElement('button');
     b.className = 'mrow' + (mod ? ' ' + mod : '');
     const codes = m.review_codes || [];
+    // 左に戦数を大きく置き、行の頭でまとまりが見えるようにする。
+    // 10戦並ぶと「7戦目はどれだっけ」が本文を読まないと分からなかった
     b.innerHTML = `
-      <div class="spread">
-        <span><span class="mono" style="font-size:13px">${esc(m.session_date)}</span>
-              <span class="sub" style="margin-left:6px">${esc(hhmm(m.captured_at))}</span></span>
-        <span class="sub">${m.seq}戦目</span>
-      </div>
-      <div style="display:flex;gap:14px;margin-top:8px;align-items:baseline">
-        <span class="sub">順位 <span class="mono" style="font-size:16px;color:var(--ink)">${nz(m.squad_place)}</span></span>
-        <span class="sub">部隊キル <span class="mono" style="font-size:16px;color:var(--ink)">${nz(m.squad_total_kills)}</span></span>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
-        ${codes.length ? `<span class="pill red">要修正 ${codes.length}</span>` : ''}
-        ${m.legend_missing ? `<span class="pill red">レジェンド未選択 ${m.legend_missing}</span>` : '<span class="pill gray">レジェンド入力ずみ</span>'}
-      </div>
-      ${codes.length ? `<div class="sub" style="margin-top:8px;color:var(--ink2)">${esc(codes[0].detail || codes[0].code)}</div>` : ''}`;
+      <div class="seqno"><span class="n">${m.seq}</span><span class="u">戦目</span></div>
+      <div class="body">
+        <div class="spread">
+          <span><span class="mono" style="font-size:13px">${esc(m.session_date)}</span>
+                <span class="sub" style="margin-left:6px">${esc(hhmm(m.captured_at))}</span></span>
+          <span class="sub" style="font-size:10px">${esc(m.split_id || "")}</span>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:8px;align-items:baseline">
+          <span class="sub">順位 <span class="mono" style="font-size:16px;color:var(--ink)">${nz(m.squad_place)}</span></span>
+          <span class="sub">部隊キル <span class="mono" style="font-size:16px;color:var(--ink)">${nz(m.squad_total_kills)}</span></span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
+          ${codes.length ? `<span class="pill red">要修正 ${codes.length}</span>` : ''}
+          ${m.legend_missing ? `<span class="pill red">レジェンド未選択 ${m.legend_missing}</span>` : '<span class="pill gray">レジェンド入力ずみ</span>'}
+        </div>
+        ${codes.length ? `<div class="sub" style="margin-top:8px;color:var(--ink2)">${esc(codes[0].detail || codes[0].code)}</div>` : ''}
+      </div>`;
     b.onclick = () => openDetail(m.match_id);
     host.appendChild(b);
   });
@@ -957,6 +987,16 @@ function prefetchImages(ids){
       .catch(() => { delete S.images[id]; });
   });
 }
+/**
+ * 届いた画像を画面へ入れる。
+ *
+ * === 描き直しのたびに呼び直す ===
+ *
+ * 以前はここでしか枠を隠していなかった。**画像が届いたあとに描き直すと、
+ * hidden の付いていないHTMLで作り直されて枠が戻る。**
+ * 画像のほうは控えから出るので、**枠と画像が両方並ぶ**（実際に起きた）。
+ * render のたびに paintAllImages() を呼んで、手元にあるぶんを入れ直す
+ */
 
 function paintImage(fileId){
   const src = S.images[fileId];
@@ -969,6 +1009,13 @@ function paintImage(fileId){
     const box = document.getElementById('shotbox');
     if(box) box.hidden = true;
   }
+
+/** いま手元にある画像を、画面の枠へすべて入れ直す */
+function paintAllImages(){
+  Object.keys(S.images).forEach(function (id) {
+    if (S.images[id] && S.images[id] !== 'loading') paintImage(id);
+  });
+}
 
   // まとめ修正（何枚も並ぶ）。読み込み中の枠を画像に差し替える
   app.querySelectorAll('.bshotbox[data-file-id="' + fileId + '"]').forEach(box => {
@@ -1050,7 +1097,13 @@ function renderDetail(){
   }).length;
   const clean = codes.length === 0 && !killSumBad;
 
-  titleEl.textContent = clean ? '試合の詳細' : '試合の詳細';
+  // === いま何戦目で、全部で何戦あるかを出す ===
+  //
+  // 「試合の詳細」だけだと、10戦あるうちのどれを見ているのか分からない。
+  // 戻って探し直すことになる
+  var allRows = (S.list && S.list.matches) || [];
+  var totalSeq = allRows.length;
+  titleEl.textContent = totalSeq ? (m.seq + '戦目 / 全' + totalSeq + '戦') : '試合の詳細';
 
   app.innerHTML = `
     <div id="shotbox" class="shotbox"${cached && cached !== 'loading' ? ' hidden' : ''}>
@@ -1227,6 +1280,10 @@ function renderDetail(){
 
   if(cached === 'loading' || !cached) prefetchImages([m.image_ref]);
   window.scrollTo(0, 0);
+
+  // **描き直したので、手元にある画像を入れ直す。**
+  // これが無いと、あとから届いた画像の枠が復活して二重に出る
+  paintAllImages();
 }
 
 function codeTitle(code){
@@ -1419,8 +1476,58 @@ function setLegend(entryId, legendId){
  * 行は消さない。status を given_up に変えて、警告の対象から外すだけ。
  * 何をどういう理由で諦めたかは、設定＞取り込みの結果で引き続き見られる。
  */
+/**
+ * 読めなかった画像を見せる。
+ *
+ * **諦める前に中身を見る手段が無かった。**「設定＞取り込みの結果で見られる」と
+ * 書いてはいたが、押す前にそこへ行く導線が無く、押した瞬間に確定していた。
+ */
+function showFailed(btn){
+  if(!S.key){ toast('編集キーが要ります', true); return; }
+  const before = btn.textContent;
+  btn.disabled = true; btn.textContent = '調べています…';
+  apiGet({ action:'queue_status' })
+    .then(r => {
+      const rows = (r.problems || []).filter(q => q.status === 'failed');
+      S.failedList = rows;
+      const box = document.getElementById('failedBox');
+      if(!box) return;
+      box.innerHTML = rows.length
+        ? rows.map(q =>
+            '<div class="card" style="margin:10px 0 0">' +
+              '<div class="mono" style="font-size:12px">' + esc(q.file_name) + '</div>' +
+              '<div class="sub" style="margin-top:6px">' + esc(q.error || '理由が記録されていません') + '</div>' +
+              '<div class="sub" style="margin-top:6px;color:var(--ink4)">' +
+                esc(String(q.first_seen_at || '').slice(0,16).replace('T',' ')) +
+                '　試行' + q.tried_count + '回</div>' +
+              (q.file_id
+                ? '<div class="bshotbox" data-file-id="' + esc(q.file_id) + '" style="margin-top:10px">' +
+                  '<span class="sub">画像を読み込み中…</span></div>'
+                : '') +
+            '</div>').join('')
+        : '<div class="sub" style="margin-top:10px">失敗した画像はありません。</div>';
+      prefetchImages(rows.map(q => q.file_id));
+      btn.textContent = '閉じる';
+      btn.disabled = false;
+      btn.onclick = () => { box.innerHTML = ''; btn.textContent = before; btn.onclick = () => showFailed(btn); };
+    })
+    .catch(err => {
+      btn.disabled = false; btn.textContent = before;
+      toast('調べられませんでした：' + err.message, true);
+    });
+}
+
+
 function giveUpFailed(btn){
   if(!S.key){ toast('編集キーが要ります', true); return; }
+  // === 中身を見せてから確認する ===
+  //
+  // 以前は押した瞬間に確定していた。**何を諦めるのかを見る手段も無かった。**
+  // 諦めると警告から消えるので、取り返しがつかない
+  var names = (S.failedList || []).map(function (q) { return '・' + q.file_name; }).join('\n');
+  var msg = '次の画像を諦めます。\n\n' + (names || '（一覧をまだ取得していません）') +
+            '\n\n諦めると警告から消えます。設定＞取り込みの結果には残ります。よろしいですか？';
+  if (!confirm(msg)) return;
   const before = btn.textContent;
   btn.disabled = true;
   btn.textContent = '送っています…';
@@ -1788,6 +1895,10 @@ function renderBulk(){
   });
   const go = document.getElementById('bulkGo');
   if(go) go.onclick = sendBulkLegends;
+
+  // **描き直したので、手元にある画像を入れ直す。**
+  // これが無いと、あとから届いた画像の枠が復活して二重に出る
+  paintAllImages();
 }
 
 /**
