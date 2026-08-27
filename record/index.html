@@ -1010,13 +1010,6 @@ function paintImage(fileId){
     if(box) box.hidden = true;
   }
 
-/** いま手元にある画像を、画面の枠へすべて入れ直す */
-function paintAllImages(){
-  Object.keys(S.images).forEach(function (id) {
-    if (S.images[id] && S.images[id] !== 'loading') paintImage(id);
-  });
-}
-
   // まとめ修正（何枚も並ぶ）。読み込み中の枠を画像に差し替える
   app.querySelectorAll('.bshotbox[data-file-id="' + fileId + '"]').forEach(box => {
     const el = document.createElement('img');
@@ -1025,6 +1018,13 @@ function paintAllImages(){
     el.dataset.fileId = fileId;
     el.alt = 'リザルト画面';
     box.replaceWith(el);
+  });
+}
+
+/** いま手元にある画像を、画面の枠へすべて入れ直す */
+function paintAllImages(){
+  Object.keys(S.images).forEach(function (id) {
+    if (S.images[id] && S.images[id] !== 'loading') paintImage(id);
   });
 }
 
