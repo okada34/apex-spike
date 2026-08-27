@@ -226,6 +226,13 @@
   .clsline{ display:flex; align-items:center; gap:8px; margin-top:16px; font-family:'Dela Gothic One',sans-serif; font-size:13px; }
   .dot{ width:10px; height:10px; border-radius:50%; flex:none; }
 
+
+  /* === hidden を必ず効かせる ===
+     ブラウザ標準の [hidden]{display:none} は**弱い**ので、
+     .shotbox{display:flex} のような指定に負ける。
+     「隠したのに見えている」が実際に起きた（スクショの枠が画像と二重に出た）。
+     どの画面でも同じ罠があるので、まとめて塞ぐ */
+  [hidden]{ display:none !important; }
 </style>
 </head>
 <body>
