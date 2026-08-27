@@ -135,6 +135,19 @@
   .pill.lime{ background:var(--lime); color:var(--invert); }
   .pill.gray{ background:var(--sunken); color:var(--ink2); }
 
+  /* === 注意書きは箇条書きにする ===
+     平らに並べると、どこまでが1件か分からずノイズになる */
+  .rlist{ margin:9px 0 0; padding-left:1.15em; }
+  .rlist li{ font-size:12px; color:var(--ink2); line-height:1.7; margin-top:3px; }
+  .rlist li::marker{ color:var(--ink4); }
+  .rlist.quiet li{ color:var(--ink3); }
+  .rmore{
+    display:flex; align-items:center; gap:6px; margin-top:10px; padding:0;
+    background:none; border:0; cursor:pointer;
+    color:var(--ink3); font-family:'RocknRoll One',sans-serif; font-size:11.5px;
+  }
+  .rmore .tri{ color:var(--ink4); }
+
   /* ---- レジェンド ---- */
   .legbox{ background:var(--sunken); border:2px solid transparent; border-radius:14px; padding:12px; margin-top:11px; }
   .legbox.bad{ border-color:var(--red); }
@@ -144,9 +157,10 @@
      キャラの絵は小さく、「ん？このキャラなんだ？」となる。
      以前はシートが全面に出てスクショが隠れ、拡大もできなかった。
      シートの上に細く出し、押すと拡大して横に動かせるようにする */
-  .peek{ margin:10px 0 2px; }
-  .peek img{ width:100%; display:block; border-radius:10px; }
-  .peek .hint{ font-size:10px; color:var(--ink4); text-align:center; margin-top:5px; }
+  .peek{ margin:0; }
+  /* 元の比率のまま出す。切り取ると見たいキャラが欠けるかもしれない。
+     細かいところは「拡大」で見てもらう */
+  .peek img{ width:100%; display:block; border-radius:10px; cursor:pointer; }
   .peek .peekwait{
     height:96px; border-radius:10px; background:var(--sunken);
     display:flex; align-items:center; justify-content:center;
@@ -190,16 +204,25 @@
                   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .trio .one .lg.empty{ color:var(--ink4); font-family:'RocknRoll One',sans-serif; font-size:11px; }
 
-  /* いま何人目を選んでいるか。**シートの一番上に固定して見失わせない** */
-  .picknow{
+  /* === 見出しとスクショを、シートの一番上に貼り付ける ===
+     **下までスクロールするとスクショが消えてしまう**と、
+     サポートやコントローラーなど下の方のキャラを選ぶときに見られない。
+     見出しだけでなくスクショごと貼り付ける */
+  .stick{
     position:sticky; top:0; z-index:2; background:var(--ground);
-    padding:10px 0 12px; margin:-4px 0 0;
+    margin:-4px 0 0; padding-bottom:8px;
+    box-shadow:0 8px 12px -8px rgba(10,6,30,.9);
   }
+  .picknow{ padding:10px 0 10px; }
   .picknow .big{ font-family:'Dela Gothic One',sans-serif; font-size:16px; }
-  .picknow .peekbtn{
-    margin-left:auto; background:var(--sunken); border:1px solid var(--line);
-    color:var(--ink2); font-family:'RocknRoll One',sans-serif; font-size:11px;
-    padding:6px 11px; border-radius:9px; cursor:pointer; flex:none;
+  /* **見出しが無い経路（詳細から1人だけ選ぶ）でも出るように、
+     スクショ自身の角に置く。** */
+  .peek{ position:relative; }
+  .peek .peekbtn{
+    position:absolute; right:8px; top:8px;
+    background:rgba(10,6,30,.72); border:1px solid var(--line);
+    color:#fff; font-family:'RocknRoll One',sans-serif; font-size:11px;
+    padding:6px 12px; border-radius:9px; cursor:pointer;
   }
   .picknow .step{ font-family:'Roboto Mono',monospace; font-size:11px; color:var(--ink3); }
   .picknow .bar{ height:4px; border-radius:2px; background:var(--sunken); margin-top:8px; overflow:hidden; }
@@ -990,8 +1013,11 @@ async function renderList(){
 function paintList(){
   const c = S.list.counts;
   const rows = S.list.matches || [];
-  const bad = rows.filter(m => (m.review_codes || []).length > 0 || m.legend_missing);
-  const ok  = rows.filter(m => !((m.review_codes || []).length > 0 || m.legend_missing));
+  // **報告しかない試合を「先に直すもの」に入れない。**
+  // 「野良として登録しました」は済んだ知らせで、直す作業ではない
+  const needsFix = m => (m.review_codes || []).some(isTodoCode) || m.legend_missing;
+  const bad = rows.filter(needsFix);
+  const ok  = rows.filter(m => !needsFix(m));
   const total = bad.length + ok.length + c.confirmed;
   const now = new Date();
   const stamp = (now.getMonth()+1) + '/' + now.getDate() + ' ' +
@@ -1102,6 +1128,8 @@ function paintSection(id, title, rows, mod, note){
     const b = document.createElement('button');
     b.className = 'mrow' + (mod ? ' ' + mod : '');
     const codes = m.review_codes || [];
+    // **報告の件数は数えない。**赤い「要修正」は、直す作業の数だけを表す
+    const todoCount = codes.filter(isTodoCode).length;
     // 左に戦数を大きく置き、行の頭でまとまりが見えるようにする。
     // 10戦並ぶと「7戦目はどれだっけ」が本文を読まないと分からなかった
     b.innerHTML = `
@@ -1117,10 +1145,14 @@ function paintSection(id, title, rows, mod, note){
           <span class="sub">部隊キル <span class="mono" style="font-size:16px;color:var(--ink)">${nz(m.squad_total_kills)}</span></span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
-          ${codes.length ? `<span class="pill red">要修正 ${codes.length}</span>` : ''}
+          ${todoCount ? `<span class="pill red">要修正 ${todoCount}</span>` : ''}
           ${m.legend_missing ? `<span class="pill red">レジェンド未選択 ${m.legend_missing}</span>` : '<span class="pill gray">レジェンド入力ずみ</span>'}
         </div>
-        ${codes.length ? `<div class="sub" style="margin-top:8px;color:var(--ink2)">${esc(codes[0].detail || codes[0].code)}</div>` : ''}
+        ${(function(){
+          const t = codes.filter(isTodoCode);
+          const one = t.length ? t[0] : null;
+          return one ? `<div class="sub" style="margin-top:8px;color:var(--ink2)">${esc(one.detail || one.code)}</div>` : '';
+        })()}
       </div>`;
     b.onclick = () => openDetail(m.match_id);
     host.appendChild(b);
@@ -1200,6 +1232,8 @@ function paintImage(fileId){
     pk.src = src; pk.hidden = false;
     const w = document.getElementById('peekwait');
     if(w) w.remove();
+    const pb = document.getElementById('peektop');
+    if(pb) pb.hidden = false;
   }
 
   // まとめ修正（何枚も並ぶ）。読み込み中の枠を画像に差し替える
@@ -1228,6 +1262,8 @@ function paintImageFailed(fileId){
   const w = document.getElementById('peekwait');
   const pk = document.getElementById('peekimg');
   if(w && pk && pk.dataset.fileId === fileId){
+    const pbF = document.getElementById('peektop');
+    if(pbF) pbF.hidden = true;
     w.innerHTML = '<span>読み込めませんでした</span>' +
       '<button class="btn ghost" id="peekretry" style="width:auto;margin-left:10px;padding:0 14px;height:32px">もう一度</button>';
     const pb = document.getElementById('peekretry');
@@ -1245,7 +1281,11 @@ function paintImageLoading(fileId){
   }
   const w = document.getElementById('peekwait');
   const pk = document.getElementById('peekimg');
-  if(w && pk && pk.dataset.fileId === fileId) w.textContent = 'スクショを読み込み中…';
+  if(w && pk && pk.dataset.fileId === fileId){
+    w.textContent = 'スクショを読み込み中…';
+    const pbL = document.getElementById('peektop');
+    if(pbL) pbL.hidden = true;
+  }
 }
 
 /** いま手元にある画像を、画面の枠へすべて入れ直す */
@@ -1367,14 +1407,39 @@ function renderDetail(){
   `;
 
   if(codes.length){
-    document.getElementById('reason').innerHTML = `
+    // **やること と 報告 を分け、同じ話は1行にまとめ、報告はたたんで出す。**
+    // 平らに並べていたころは、対象者が違うだけの同じ文が繰り返され、
+    // 「直すもの」と「済ませた報告」が混ざって、毎回ぜんぶ読む羽目になっていた
+    const todo = mergeCodeLines(codes.filter(isTodoCode));
+    const done = mergeCodeLines(codes.filter(c => !isTodoCode(c)));
+    const foldBtn = done.length
+      ? `<button class="rmore" id="doneMore" aria-expanded="false">
+           <span class="tri">▸</span>こちらで処理ずみ <span class="mono">${done.length}</span>
+         </button>
+         <ul class="rlist quiet" id="doneList" hidden>${
+           done.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`
+      : '';
+
+    document.getElementById('reason').innerHTML = todo.length ? `
       <div class="card red" style="margin-top:12px">
         <div style="display:flex;align-items:center;gap:8px">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FF5470" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 8v5"></path><path d="M12 16.5v.5"></path><circle cx="12" cy="12" r="9"></circle></svg>
-          <span class="dela" style="font-size:13.5px">${esc(codeTitle(codes[0].code))}</span>
+          <span class="dela" style="font-size:13.5px">確認してほしいこと <span class="mono" style="font-size:12px">${todo.length}</span></span>
         </div>
-        ${codes.map(c => `<div class="sub" style="margin-top:7px;color:var(--ink2)">${esc(c.detail || c.code)}</div>`).join('')}
+        <ul class="rlist">${todo.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+        ${foldBtn}
+      </div>` : `
+      <div class="card" style="margin-top:12px;border-left:4px solid var(--ink4)">
+        ${foldBtn}
       </div>`;
+
+    const dm = document.getElementById('doneMore');
+    if(dm) dm.onclick = () => {
+      const li = document.getElementById('doneList');
+      li.hidden = !li.hidden;
+      dm.setAttribute('aria-expanded', li.hidden ? 'false' : 'true');
+      dm.querySelector('.tri').textContent = li.hidden ? '▸' : '▾';
+    };
   }
 
   // スクショのすぐ下に、3人分のキャラをまとめて選ぶ枠を出す
@@ -1520,6 +1585,49 @@ function renderDetail(){
   // **描き直したので、手元にある画像を入れ直す。**
   // これが無いと、あとから届いた画像の枠が復活して二重に出る
   paintAllImages();
+}
+
+/**
+ * **もう片づいていて、利用者が何もしなくていい知らせ。**
+ *
+ * 「野良として登録しました」は、こちらで処理を済ませた報告であって、
+ * 直す作業ではない。これを「先に直すもの」に混ぜていたため、
+ * **毎回ぜんぶ読まないと、どれが本当の作業か分からなかった。**
+ */
+var DONE_CODES = ['UNKNOWN_ACCOUNT', 'CAPTURED_AT_FALLBACK', 'SPLIT_UNRESOLVED', 'LEGEND_UNRESOLVED'];
+function isTodoCode(c){ return DONE_CODES.indexOf(String(c && c.code)) < 0; }
+
+/**
+ * 同じ種類が並ぶと、**対象者が違うだけの同じ文**が繰り返される。
+ *
+ *   「cocororo_48」を野良として登録（集計対象外）
+ *   「side_military88」を野良として登録（集計対象外）
+ *
+ * かぎ括弧の中だけが違うなら、名前を並べて1行にまとめる。
+ * まとめられない形のものは、そのまま別々に出す（勝手に消さない）。
+ */
+function mergeCodeLines(list){
+  const byCode = {};
+  const order = [];
+  list.forEach(c => {
+    const k = String(c.code || '');
+    if(!byCode[k]){ byCode[k] = []; order.push(k); }
+    byCode[k].push(c);
+  });
+  const out = [];
+  order.forEach(k => {
+    const arr = byCode[k];
+    if(arr.length === 1){ out.push(arr[0].detail || codeTitle(k)); return; }
+    const names = arr.map(c => (String(c.detail || '').match(/「(.+?)」/) || [])[1]).filter(Boolean);
+    const rest  = arr.map(c => String(c.detail || '').replace(/「.+?」/, ''))
+                     .filter((v, i, a) => a.indexOf(v) === i);
+    if(names.length === arr.length && rest.length === 1){
+      out.push(names.map(n => '「' + n + '」').join('') + rest[0]);
+    }else{
+      arr.forEach(c => out.push(c.detail || codeTitle(k)));
+    }
+  });
+  return out;
 }
 
 function codeTitle(code){
@@ -1857,20 +1965,22 @@ function openLegendSheet(entryId, accountId, onPick, opt){
         <button class="btn ghost" style="width:auto;height:40px;padding:0 16px" id="lclose">閉じる</button>
       </div>
 
-      ${opt.head ? `
-        <div class="picknow">
-          <div class="spread"><span class="big">${esc(opt.head)}</span>
-            ${opt.shotId ? '<button class="peekbtn" id="peektop">スクショ</button>' : ''}
-            <span class="step">${esc(opt.step || '')}</span></div>
-          <div class="bar"><i style="width:${Math.round((opt.rate || 0) * 100)}%"></i></div>
+      ${(opt.head || opt.shotId) ? `
+        <div class="stick">
+          ${opt.head ? `
+            <div class="picknow">
+              <div class="spread"><span class="big">${esc(opt.head)}</span>
+                <span class="step">${esc(opt.step || '')}</span></div>
+              <div class="bar"><i style="width:${Math.round((opt.rate || 0) * 100)}%"></i></div>
+            </div>` : ''}
+          ${opt.shotId ? `
+            <div class="peek">
+              <img id="peekimg" data-file-id="${esc(opt.shotId)}" alt="リザルト画面"
+                   ${peekSrc ? `src="${peekSrc}"` : 'hidden'}>
+              ${peekSrc ? '' : '<div class="peekwait" id="peekwait">スクショを読み込み中…</div>'}
+              <button class="peekbtn" id="peektop"${peekSrc ? '' : ' hidden'}>拡大</button>
+            </div>` : ''}
         </div>` : ''}
-        ${opt.shotId ? `
-          <div class="peek">
-            <img id="peekimg" data-file-id="${esc(opt.shotId)}" alt="リザルト画面"
-                 ${peekSrc ? `src="${peekSrc}"` : 'hidden'}>
-            ${peekSrc ? '' : '<div class="peekwait" id="peekwait">スクショを読み込み中…</div>'}
-            <div class="hint">押すと拡大できます</div>
-          </div>` : ''}
 
       ${big.length ? `
         <div class="sub" style="margin-top:14px">よく使う3体</div>
