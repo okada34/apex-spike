@@ -147,6 +147,11 @@
   .peek{ margin:10px 0 2px; }
   .peek img{ width:100%; display:block; border-radius:10px; }
   .peek .hint{ font-size:10px; color:var(--ink4); text-align:center; margin-top:5px; }
+  .peek .peekwait{
+    height:96px; border-radius:10px; background:var(--sunken);
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; color:var(--ink3);
+  }
 
   .zoom{ position:fixed; inset:0; z-index:60; background:#000; display:flex; flex-direction:column; }
   .zoom .bar{
@@ -191,6 +196,11 @@
     padding:10px 0 12px; margin:-4px 0 0;
   }
   .picknow .big{ font-family:'Dela Gothic One',sans-serif; font-size:16px; }
+  .picknow .peekbtn{
+    margin-left:auto; background:var(--sunken); border:1px solid var(--line);
+    color:var(--ink2); font-family:'RocknRoll One',sans-serif; font-size:11px;
+    padding:6px 11px; border-radius:9px; cursor:pointer; flex:none;
+  }
   .picknow .step{ font-family:'Roboto Mono',monospace; font-size:11px; color:var(--ink3); }
   .picknow .bar{ height:4px; border-radius:2px; background:var(--sunken); margin-top:8px; overflow:hidden; }
   .picknow .bar i{ display:block; height:100%; background:var(--lime); border-radius:2px; }
@@ -248,7 +258,9 @@
   .sheet{ position:fixed; inset:0; z-index:40; background:rgba(10,6,30,.75); display:flex; align-items:flex-end; }
   .sheetinner{
     background:var(--ground); border-radius:22px 22px 0 0; width:100%; max-width:430px; margin:0 auto;
-    max-height:86vh; overflow:auto; padding:18px 18px 28px;
+    max-height:86vh; overflow:auto;
+    /* いちばん下のボタンがホームバーに隠れないようにする */
+    padding:18px 18px calc(28px + env(safe-area-inset-bottom));
   }
   .lgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:7px; margin:8px 0 16px; }
   .lgrid button{
@@ -1141,6 +1153,15 @@ function paintImage(fileId){
     if(box) box.hidden = true;
   }
 
+  // 選択シートの上に細く出しているぶん。**シートは app の外（body直下）にある**ので
+  // 下の app.querySelectorAll では拾えない
+  const pk = document.getElementById('peekimg');
+  if(pk && pk.dataset.fileId === fileId){
+    pk.src = src; pk.hidden = false;
+    const w = document.getElementById('peekwait');
+    if(w) w.remove();
+  }
+
   // まとめ修正（何枚も並ぶ）。読み込み中の枠を画像に差し替える
   app.querySelectorAll('.bshotbox[data-file-id="' + fileId + '"]').forEach(box => {
     const el = document.createElement('img');
@@ -1592,16 +1613,18 @@ function paintTrio(entries, accById, legById){
     '</div>';
 
   const b = document.getElementById('trioPick');
-  // スクショを渡す。選びながら見られるようにするため
-  const shot = S.images[((S.detail || {}).match || {}).image_ref || ''];
-  if(b) b.onclick = () => runTrioPick(list, accById, (shot && shot !== 'loading') ? shot : '');
+  // **画像そのものではなく、画像の番号を渡す。**
+  // 以前は「まだ届いていない画像」を渡そうとして空になり、
+  // **スクショの欄ごと消えていた**（届いても後から入らなかった）
+  const shotId = ((S.detail || {}).match || {}).image_ref || '';
+  if(b) b.onclick = () => runTrioPick(list, accById, shotId);
 }
 
 /**
  * 左 → 中央 → 右 の順に、続けて選んでもらう。
  * シートは開いたままで、選ぶたびに「いま何人目か」だけが変わる。
  */
-function runTrioPick(list, accById, shot){
+function runTrioPick(list, accById, shotId){
   const picked = {};          // entry_id -> legend_id
   let idx = 0;
 
@@ -1622,7 +1645,7 @@ function runTrioPick(list, accById, shot){
       step: (idx + 1) + ' / ' + list.length,
       rate: idx / list.length,
       clearLabel: stranger ? 'この人は飛ばす（野良）' : 'この人は分からない',
-      shot: shot,
+      shotId: shotId,
       // リザルト画面は3人が横に並ぶので、その人のところへ寄せて開く
       focus: e.card_slot === 'left' ? 0 : e.card_slot === 'center' ? 1 : 2,
       keepOpen: true
@@ -1744,6 +1767,10 @@ function openLegendSheet(entryId, accountId, onPick, opt){
 
   const big = recent.slice(0, 3).map(id => byId[id]).filter(Boolean);
 
+  // 届いていれば今すぐ出す。まだなら枠だけ出して、届いた時に paintImage が入れる
+  const peekRaw = opt.shotId ? S.images[opt.shotId] : '';
+  const peekSrc = (peekRaw && peekRaw !== 'loading') ? peekRaw : '';
+
   const sheet = document.createElement('div');
   sheet.className = 'sheet';
   sheet.innerHTML = `
@@ -1756,12 +1783,15 @@ function openLegendSheet(entryId, accountId, onPick, opt){
       ${opt.head ? `
         <div class="picknow">
           <div class="spread"><span class="big">${esc(opt.head)}</span>
+            ${opt.shotId ? '<button class="peekbtn" id="peektop">スクショ</button>' : ''}
             <span class="step">${esc(opt.step || '')}</span></div>
           <div class="bar"><i style="width:${Math.round((opt.rate || 0) * 100)}%"></i></div>
         </div>` : ''}
-        ${opt.shot ? `
+        ${opt.shotId ? `
           <div class="peek">
-            <img src="${opt.shot}" alt="リザルト画面" id="peekimg">
+            <img id="peekimg" data-file-id="${esc(opt.shotId)}" alt="リザルト画面"
+                 ${peekSrc ? `src="${peekSrc}"` : 'hidden'}>
+            ${peekSrc ? '' : '<div class="peekwait" id="peekwait">スクショを読み込み中…</div>'}
             <div class="hint">押すと拡大できます</div>
           </div>` : ''}
 
@@ -1786,7 +1816,14 @@ function openLegendSheet(entryId, accountId, onPick, opt){
   sheet.querySelector('#lclose').onclick = close;
   // スクショを押したら拡大して見る。**選ぶ手を止めずに確認できるように**
   const pk = sheet.querySelector('#peekimg');
-  if(pk) pk.onclick = () => openShotZoom(opt.shot, opt.focus);
+  const showShot = () => { if(pk && pk.getAttribute('src')) openShotZoom(pk.src, opt.focus); };
+  if(pk) pk.onclick = showShot;
+  // **下までスクロールするとスクショは流れて見えなくなる。**
+  // 見出しは上に貼り付いたままなので、そこからいつでも開けるようにする
+  const pt = sheet.querySelector('#peektop');
+  if(pt) pt.onclick = showShot;
+  // まだ届いていなければ取りに行く。届いたぶんは paintImage が入れてくれる
+  if(opt.shotId && !peekSrc) prefetchImages([opt.shotId]);
   sheet.onclick = ev => { if(ev.target === sheet) close(); };
   // 呼び出し元が受け取り方を決める。試合の詳細では即保存、まとめ選択では手元に貯める
   const pick = onPick || (id => setLegend(entryId, id));
