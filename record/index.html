@@ -138,6 +138,36 @@
   /* ---- レジェンド ---- */
   .legbox{ background:var(--sunken); border:2px solid transparent; border-radius:14px; padding:12px; margin-top:11px; }
   .legbox.bad{ border-color:var(--red); }
+
+  /* === 3人ぶんをまとめて選ぶ ===
+     以前は1人ずつ「選ぶ」を押して、シートを開いて閉じてを3回。
+     **スクショのすぐ下に置き、左→まん中→右の順に3回タップするだけ**にした */
+  .trio{ margin:12px 18px 0; background:var(--card); border-radius:16px; padding:13px 14px 14px; }
+  .trio .th{ display:flex; align-items:baseline; gap:9px; margin-bottom:11px; }
+  .trio .tt{ font-family:'Dela Gothic One',sans-serif; font-size:14px; }
+  .trio .tn{ font-size:10.5px; color:var(--ink3); margin-left:auto; }
+  .trio .row3{ display:flex; gap:8px; }
+  .trio .one{
+    flex:1; min-width:0; background:var(--sunken); border-radius:12px; padding:9px 8px;
+    border-left:3px solid var(--line); text-align:center;
+  }
+  .trio .one.need{ border-left-color:var(--red); }
+  .trio .one .pos{ font-size:9.5px; color:var(--ink4); }
+  .trio .one .nm{ font-size:10.5px; color:var(--ink3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .trio .one .lg{ font-family:'Dela Gothic One',sans-serif; font-size:12px; margin-top:4px;
+                  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .trio .one .lg.empty{ color:var(--ink4); font-family:'RocknRoll One',sans-serif; font-size:11px; }
+
+  /* いま何人目を選んでいるか。**シートの一番上に固定して見失わせない** */
+  .picknow{
+    position:sticky; top:0; z-index:2; background:var(--ground);
+    padding:10px 0 12px; margin:-4px 0 0;
+  }
+  .picknow .big{ font-family:'Dela Gothic One',sans-serif; font-size:16px; }
+  .picknow .step{ font-family:'Roboto Mono',monospace; font-size:11px; color:var(--ink3); }
+  .picknow .bar{ height:4px; border-radius:2px; background:var(--sunken); margin-top:8px; overflow:hidden; }
+  .picknow .bar i{ display:block; height:100%; background:var(--lime); border-radius:2px; }
+
   .big3{ display:flex; gap:7px; margin-top:11px; }
   .big3 button{
     flex:1; height:54px; background:#3A2F86; border:0; border-left:4px solid var(--line);
@@ -1180,6 +1210,7 @@ function renderDetail(){
     <img class="shot" id="shot" data-file-id="${esc(m.image_ref)}"
          src="${cached && cached !== 'loading' ? cached : ''}"${cached && cached !== 'loading' ? '' : ' hidden'} alt="リザルト画面">
 
+    <div id="trio"></div>
     <div id="reason"></div>
 
     <div class="card" style="margin-top:12px">
@@ -1216,6 +1247,9 @@ function renderDetail(){
         ${codes.map(c => `<div class="sub" style="margin-top:7px;color:var(--ink2)">${esc(c.detail || c.code)}</div>`).join('')}
       </div>`;
   }
+
+  // スクショのすぐ下に、3人ぶんのキャラをまとめて選ぶ枠を出す
+  paintTrio(entries, accById, legById);
 
   const box = document.getElementById('entries');
   entries.forEach(e => {
@@ -1469,7 +1503,127 @@ function bindNumberInput(input){
 // ===================================================================
 // レジェンド選択（カンバス4枚目）
 // ===================================================================
-function openLegendSheet(entryId, accountId, onPick){
+/**
+ * 3人ぶんのキャラを、まとめて選ぶ。
+ *
+ * === なぜ作ったか ===
+ *
+ * 以前は1人ずつ「選ぶ」を押し、シートを開いて閉じてを3回くり返していた。
+ * **スクショのすぐ下に置き、左→まん中→右の順に3回タップするだけ**にする。
+ *
+ * 保存は bulk_update_legends で1回にまとめる。1人ずつ送ると3往復かかる。
+ *
+ * 野良は**レジェンド任意**なので、順番には入れるが「飛ばす」で抜けられる。
+ */
+function paintTrio(entries, accById, legById){
+  const host = document.getElementById('trio');
+  if(!host) return;
+
+  // 画面の並びは左 → まん中 → 右で固定する。
+  // データの順に依存すると、試合ごとに順番が変わって指が迷う
+  const order = { left:0, center:1, right:2 };
+  const list = entries.slice().sort((a,b) =>
+    (order[a.card_slot] === undefined ? 9 : order[a.card_slot]) -
+    (order[b.card_slot] === undefined ? 9 : order[b.card_slot]));
+
+  const posName = c => c === 'center' ? 'まん中' : c === 'left' ? '左' : '右';
+  const need = list.filter(e => {
+    const acc = accById[e.account_id] || {};
+    const stranger = acc.kind === 'stranger' || !acc.kind;
+    return !e.legend_id && !stranger;
+  }).length;
+
+  host.innerHTML =
+    '<div class="trio">' +
+      '<div class="th"><span class="tt">キャラを選ぶ</span>' +
+        '<span class="tn">' + (need ? 'あと' + need + '人' : 'ぜんぶ選べています') + '</span></div>' +
+      '<div class="row3">' +
+        list.map(e => {
+          const acc = accById[e.account_id] || {};
+          const stranger = acc.kind === 'stranger' || !acc.kind;
+          const lg = legById[e.legend_id];
+          const who = stranger ? '野良' : (acc.person_name || e.raw_name || '');
+          return '<div class="one' + (!lg && !stranger ? ' need' : '') + '"' +
+            (lg ? ' style="border-left-color:' + (CLASS_COLOR[lg.legend_class] || 'var(--line)') + '"' : '') + '>' +
+            '<div class="pos">' + posName(e.card_slot) + '</div>' +
+            '<div class="nm">' + esc(who) + '</div>' +
+            '<div class="lg' + (lg ? '' : ' empty') + '">' + (lg ? esc(lg.name_ja) : '未選択') + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<button class="btn ghost" id="trioPick" style="margin-top:12px">' +
+        (need ? '3人ぶんまとめて選ぶ' : '選び直す') + '</button>' +
+    '</div>';
+
+  const b = document.getElementById('trioPick');
+  if(b) b.onclick = () => runTrioPick(list, accById);
+}
+
+/**
+ * 左 → まん中 → 右 の順に、続けて選んでもらう。
+ * シートは開いたままで、選ぶたびに「いま何人目か」だけが変わる。
+ */
+function runTrioPick(list, accById){
+  const picked = {};          // entry_id -> legend_id
+  let idx = 0;
+
+  const step = () => {
+    if(idx >= list.length) { saveTrio(list, picked); return; }
+    const e = list[idx];
+    const acc = accById[e.account_id] || {};
+    const stranger = acc.kind === 'stranger' || !acc.kind;
+    const posName = e.card_slot === 'center' ? 'まん中' : e.card_slot === 'left' ? '左' : '右';
+    const who = stranger ? '野良' : (acc.person_name || e.raw_name || '');
+
+    openLegendSheet(e.entry_id, e.account_id, id => {
+      picked[e.entry_id] = id;
+      idx++;
+      step();
+    }, {
+      head: (idx + 1) + '人目：' + posName + '　' + who,
+      step: (idx + 1) + ' / ' + list.length,
+      rate: idx / list.length,
+      clearLabel: stranger ? 'この人は飛ばす（野良）' : 'この人は分からない',
+      keepOpen: true
+    });
+  };
+  step();
+}
+
+/** まとめて保存する。1人ずつ送ると3往復かかる */
+function saveTrio(list, picked){
+  const items = list
+    .filter(e => picked[e.entry_id] !== undefined && picked[e.entry_id] !== (e.legend_id || ''))
+    .map(e => ({ entry_id: e.entry_id, legend_id: picked[e.entry_id] }));
+  if(!items.length){ toast('変わったところはありません'); return; }
+  if(!S.key){ toast('編集キーが要ります', true); return; }
+
+  apiPost({ action:'bulk_update_legends', items: items })
+    .then(r => {
+      toast(items.length + '人ぶん登録しました');
+      // 手元の控えも合わせてから描き直す
+      const d = S.details[S.detail];
+      if(d) d.entries.forEach(e => {
+        if(picked[e.entry_id] !== undefined) { e.legend_id = picked[e.entry_id]; e.legend_source = 'manual'; }
+      });
+      renderDetail();
+    })
+    .catch(err => toast('保存できませんでした：' + err.message, true));
+}
+
+
+/**
+ * レジェンドを選ぶシート。
+ *
+ * opt を渡すと**連続選択**になる。3人ぶんをまとめて選ぶときに使う。
+ *   head        いま何人目・誰かの見出し
+ *   step        「2 / 3」
+ *   rate        進み具合（0〜1）
+ *   clearLabel  「選ばない」のボタンの文言
+ *   keepOpen    選んでも閉じない（次の人へ進む）
+ */
+function openLegendSheet(entryId, accountId, onPick, opt){
+  opt = opt || {};
   const recent = (S.masters.recent_legends || {})[accountId] || [];
   const legends = S.masters.legends || [];
   const byId = {}; legends.forEach(l => byId[l.legend_id] = l);
@@ -1487,6 +1641,13 @@ function openLegendSheet(entryId, accountId, onPick){
         <button class="btn ghost" style="width:auto;height:40px;padding:0 16px" id="lclose">閉じる</button>
       </div>
 
+      ${opt.head ? `
+        <div class="picknow">
+          <div class="spread"><span class="big">${esc(opt.head)}</span>
+            <span class="step">${esc(opt.step || '')}</span></div>
+          <div class="bar"><i style="width:${Math.round((opt.rate || 0) * 100)}%"></i></div>
+        </div>` : ''}
+
       ${big.length ? `
         <div class="sub" style="margin-top:14px">よく使う3体</div>
         <div class="big3">${big.map(l =>
@@ -1500,18 +1661,19 @@ function openLegendSheet(entryId, accountId, onPick){
         ).join('')}</div>
       `).join('')}
 
-      <button class="btn ghost" id="lclear">レジェンド不明のままにする</button>
+      <button class="btn ghost" id="lclear">${esc(opt.clearLabel || 'レジェンド不明のままにする')}</button>
     </div>`;
   document.body.appendChild(sheet);
 
   const close = () => sheet.remove();
   sheet.querySelector('#lclose').onclick = close;
   sheet.onclick = ev => { if(ev.target === sheet) close(); };
-  // 呼び出し元が受け取り方を決める。試合の詳細では即保存、まとめ修正では手元に貯める
+  // 呼び出し元が受け取り方を決める。試合の詳細では即保存、まとめ選択では手元に貯める
   const pick = onPick || (id => setLegend(entryId, id));
-  sheet.querySelector('#lclear').onclick = () => { pick(''); close(); };
+  const done = id => { close(); pick(id); };
+  sheet.querySelector('#lclear').onclick = () => done('');
   sheet.querySelectorAll('[data-legend]').forEach(b => {
-    b.onclick = () => { pick(b.dataset.legend); close(); };
+    b.onclick = () => done(b.dataset.legend);
   });
 }
 
