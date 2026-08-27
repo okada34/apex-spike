@@ -222,6 +222,31 @@
      「隠したのに見えている」が実際に起きた（スクショの枠が画像と二重に出た）。
      どの画面でも同じ罠があるので、まとめて塞ぐ */
   [hidden]{ display:none !important; }
+
+  /* === 処理中であることを、はっきり出す ===
+     以前は右上に小さく「保存中…」だけだった。
+     **押せたのか分からず、二度押しの原因になっていた**（実際にそう言われた）。
+     画面の真ん中に出し、後ろを暗くして操作を受け付けないことも伝える。
+     一瞬で終わる処理でチカチカしないよう、0.4秒たってから出す */
+  .busy{
+    position:fixed; inset:0; z-index:70; background:rgba(10,6,30,.62);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .18s;
+  }
+  .busy.on{ opacity:1; pointer-events:auto; }
+  .busy .box{
+    background:var(--card); border-radius:18px; padding:22px 26px;
+    display:flex; flex-direction:column; align-items:center; gap:13px;
+    box-shadow:0 12px 40px rgba(0,0,0,.45); min-width:180px;
+  }
+  .busy .ring{
+    width:34px; height:34px; border-radius:50%;
+    border:3px solid var(--dim); border-top-color:var(--lime);
+    animation:busyspin .8s linear infinite;
+  }
+  @keyframes busyspin{ to{ transform:rotate(360deg); } }
+  .busy .tx{ font-family:'Dela Gothic One',sans-serif; font-size:14px; }
+  .busy .sb{ font-size:11px; color:var(--ink3); }
 </style>
 </head>
 <body>
@@ -518,7 +543,40 @@ function apiPost(body){
     .then(j => { if(!j.ok) throw new Error(j.error || '保存に失敗しました'); return j; })
     .finally(() => markSaving(-1));
 }
-function markSaving(d){ S.saving += d; saveEl.textContent = S.saving > 0 ? '保存中…' : ''; }
+/**
+ * 処理中の表示。**押せたことが分かるように、画面の真ん中へ出す。**
+ *
+ * 以前は右上に小さく「保存中…」と出すだけで、
+ * 「あれ？押せてない？」と不安になり二度押しの原因になっていた。
+ * サーバーの往復に数秒かかる書き込みは、これで待ってもらう。
+ *
+ * **0.4秒たってから出す。**すぐ終わる処理でチカチカさせないため。
+ */
+var BUSY_EL = null, BUSY_TIMER = null;
+function markSaving(d){
+  S.pending = (S.pending || 0) + d;
+  if (typeof S.saving === 'number') S.saving += d;
+  var n = (typeof S.saving === 'number') ? S.saving : S.pending;
+  if (saveEl) saveEl.textContent = n > 0 ? '処理中…' : '';
+
+  if (!BUSY_EL) {
+    BUSY_EL = document.createElement('div');
+    BUSY_EL.className = 'busy';
+    BUSY_EL.innerHTML =
+      '<div class="box"><div class="ring"></div>' +
+      '<div class="tx">サーバーで処理中</div>' +
+      '<div class="sb">数秒かかります</div></div>';
+    document.body.appendChild(BUSY_EL);
+  }
+  if (n > 0) {
+    if (!BUSY_TIMER) BUSY_TIMER = setTimeout(function () {
+      BUSY_EL.classList.add('on'); BUSY_TIMER = null;
+    }, 400);
+  } else {
+    if (BUSY_TIMER) { clearTimeout(BUSY_TIMER); BUSY_TIMER = null; }
+    BUSY_EL.classList.remove('on');
+  }
+}
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function toast(msg, isError){
