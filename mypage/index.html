@@ -404,6 +404,12 @@ function fmtAgo(ms){
  * タブを初めて開くときの2〜3秒を無くすため。いま見ている画面が出てから走らせる。
  * 取れなかったら黙って諦める（次に開いたときに取りに行くだけ）。
  */
+// この画面を離れたら立てる印。先読みはこれを見て打ち切る。
+// **裏に回っただけ（document.hidden）は「やめる」ではなく「待つ」。**
+// 戻ってきたときに先読みが死んでいると、次の画面がまた遅くなる
+var WARM_STOP = false;
+window.addEventListener('pagehide', function(){ WARM_STOP = true; });
+
 function warmOtherScreens(myPersonId){
   const jobs = [
     ['home',                       { action:'home' }],
@@ -420,6 +426,11 @@ function warmOtherScreens(myPersonId){
   let i = 0;
   const next = () => {
     if(i >= jobs.length) return;
+    // **画面を離れたら、残りの先読みはやめる。**
+    // サーバーは1本ずつしか処理しない。要らなくなった問い合わせで塞ぐと、
+    // いま開こうとしている画面がその後ろで何十秒も待つ（実測で再現した）
+    if(WARM_STOP) return;
+    if(document.hidden){ setTimeout(next, 2000); return; }
     const [key, params] = jobs[i++];
     // すでに新しい控えがあるなら飛ばす（5分もてば十分）
     let fresh = false;

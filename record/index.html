@@ -82,6 +82,9 @@
   .grid2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:11px; }
   .fld{ background:var(--sunken); border:2px solid transparent; border-radius:10px; padding:8px 4px; text-align:center; }
   .fld.bad{ border-color:var(--red); }
+  /* 赤かったところを片づけた印。無地に戻すと、もともと問題が無かった欄と区別が付かない */
+  .fld.done{ border-color:var(--lime); }
+  .fld.done .lb{ color:var(--lime); }
   .fld .lb{ font-size:9px; color:var(--ink3); }
   .fld.bad .lb{ color:var(--red); }
   .fld input{
@@ -151,6 +154,7 @@
   /* ---- レジェンド ---- */
   .legbox{ background:var(--sunken); border:2px solid transparent; border-radius:14px; padding:12px; margin-top:11px; }
   .legbox.bad{ border-color:var(--red); }
+  .legbox.done{ border-color:var(--lime); }
   .shotby{ text-align:right; font-size:10px; color:var(--ink4); margin-top:9px; }
 
   /* === 選びながらスクショを見る ===
@@ -218,6 +222,26 @@
   /* **見出しが無い経路（詳細から1人だけ選ぶ）でも出るように、
      スクショ自身の角に置く。** */
   .peek{ position:relative; }
+  /* いま何を選んだか。**選んでいる最中も見えるようにする** */
+  .pick3{ display:flex; gap:6px; margin-top:8px; }
+  .pick3 .c{
+    flex:1; min-width:0; background:var(--sunken); border-radius:9px;
+    padding:6px 5px 7px; text-align:center; border-left:3px solid var(--line);
+  }
+  .pick3 .c.now{ border-left-color:var(--lime); background:#3A2F86; }
+  .pick3 .c .p{ font-size:9px; color:var(--ink4); }
+  .pick3 .c .n{
+    font-family:'Dela Gothic One',sans-serif; font-size:10.5px; margin-top:3px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .pick3 .c .n.empty{ font-family:'RocknRoll One',sans-serif; color:var(--ink4); }
+  .picknow .backbtn{
+    margin-left:auto; margin-right:9px; background:var(--sunken);
+    border:1px solid var(--line); color:var(--ink2);
+    font-family:'RocknRoll One',sans-serif; font-size:11px;
+    padding:5px 11px; border-radius:9px; cursor:pointer; flex:none;
+  }
+
   .peek .peekbtn{
     position:absolute; right:8px; top:8px;
     background:rgba(10,6,30,.72); border:1px solid var(--line);
@@ -616,6 +640,12 @@ function fmtAgo(ms){
  * タブを初めて開くときの2〜3秒を無くすため。いま見ている画面が出てから走らせる。
  * 取れなかったら黙って諦める（次に開いたときに取りに行くだけ）。
  */
+// この画面を離れたら立てる印。先読みはこれを見て打ち切る。
+// **裏に回っただけ（document.hidden）は「やめる」ではなく「待つ」。**
+// 戻ってきたときに先読みが死んでいると、次の画面がまた遅くなる
+var WARM_STOP = false;
+window.addEventListener('pagehide', function(){ WARM_STOP = true; });
+
 function warmOtherScreens(myPersonId){
   const jobs = [
     ['home',                       { action:'home' }],
@@ -632,6 +662,10 @@ function warmOtherScreens(myPersonId){
   let i = 0;
   const next = () => {
     if(i >= jobs.length) return;
+    // **画面を離れたら、残りの先読みはやめる。**
+    // 要らなくなった問い合わせでサーバーを塞ぐと、次の画面がその後ろで待つ
+    if(WARM_STOP) return;
+    if(document.hidden){ setTimeout(next, 2000); return; }
     // **画面が待っている写真を、裏の先読みで追い越さない。**
     // サーバーは1本ずつしか処理しないので、7本も割り込ませると
     // 400KBの写真が何十秒も後ろで待たされ、そのまま失敗していた
@@ -1304,6 +1338,7 @@ async function openDetail(matchId){
   titleEl.textContent = '試合の詳細';
   backEl.hidden = false;
   S.ack = {};
+  S.wasRed = {};   // この試合で最初に赤かった場所。直したあと緑にするために覚える
 
   // 一度開いた試合は控えから即出す。GASは1往復2〜3秒かかるので、待たせない
   if(S.details[matchId]){
@@ -1456,6 +1491,7 @@ function renderDetail(){
     const conf = e.confidence || {};
     const slot = e.card_slot === 'center' ? '中央' : e.card_slot === 'left' ? '左' : '右';
     const legBad = !stranger && !e.legend_id;
+    const legMk = fieldMark(e.entry_id + '.legend', legBad);
     const d = document.createElement('div');
     d.className = 'card';
     if(e.card_slot === 'center') d.style.borderLeft = '3px solid var(--purple)';
@@ -1468,7 +1504,7 @@ function renderDetail(){
         <span class="sub" style="flex:none">${esc(who)}</span>
       </div>
 
-      <div class="legbox ${legBad ? 'bad' : ''}" data-red="${legBad ? 1 : 0}">
+      <div class="legbox ${legMk.cls}" data-red="${legMk.red}" data-wasred="${legMk.was}">
         <div class="sub" style="color:var(--ink2)">${leg
           ? 'このレジェンドで登録します'
           : (stranger ? 'レジェンドは任意です' : 'キャラの絵から決められませんでした。選んでください。')}</div>
@@ -1542,7 +1578,7 @@ function renderDetail(){
         const box = i.closest('.fld');
         if(!box) return;
         if(i.dataset.field === 'kills' || i.dataset.key === 'match.squad_total_kills') return;
-        box.classList.remove('bad'); box.dataset.red = 0;
+        paintFieldState(box, false);
       });
       refreshKillRed();
       const bar = document.getElementById('ackbar');
@@ -1594,7 +1630,9 @@ function renderDetail(){
  * 直す作業ではない。これを「先に直すもの」に混ぜていたため、
  * **毎回ぜんぶ読まないと、どれが本当の作業か分からなかった。**
  */
-var DONE_CODES = ['UNKNOWN_ACCOUNT', 'CAPTURED_AT_FALLBACK', 'SPLIT_UNRESOLVED', 'LEGEND_UNRESOLVED'];
+// SPLIT_UNRESOLVED はここに入れない。**確定を止める**（Validation.gs の blocking）。
+// 設定＞スプリットの日程を入れるまで進めないので、これは報告ではなく作業
+var DONE_CODES = ['UNKNOWN_ACCOUNT', 'CAPTURED_AT_FALLBACK', 'LEGEND_UNRESOLVED'];
 function isTodoCode(c){ return DONE_CODES.indexOf(String(c && c.code)) < 0; }
 
 /**
@@ -1658,10 +1696,48 @@ function low(c){ return typeof c === 'number' && c < 0.85; }
  * soft=true は「確信度が低いので目を通してほしい」だけの赤。触れば消える。
  * soft=false は「直さないと辻褄が合わない」赤。実際に直るまで消えない。
  */
+/**
+ * 枠の見た目を決める。
+ *
+ *   赤（bad）   まだ確認できていない
+ *   緑（done）  赤かったところを直した・目を通した
+ *   無地        もともと問題が無い
+ *
+ * **直したあと無地に戻すと、もともと問題が無かった欄と見分けが付かない。**
+ * 確定前に「緑がそろっているからOK」と、ひと目で分かるようにする。
+ */
+/** レジェンドIDから表示名。見つからなければ空文字 */
+function legendName(id){
+  const l = ((S.masters || {}).legends || []).filter(x => x.legend_id === id)[0];
+  return l ? l.name_ja : '';
+}
+
+function fieldMark(key, bad){
+  S.wasRed = S.wasRed || {};
+  if(bad) S.wasRed[key] = true;
+  const was = !!S.wasRed[key];
+  return { cls: bad ? 'bad' : (was ? 'done' : ''), red: bad ? 1 : 0, was: was ? 1 : 0 };
+}
+
+/** 描いたあとに枠の色を付け替える。fieldMark と同じ決まりで動かす */
+function paintFieldState(box, bad){
+  if(!box) return;
+  // **必ず真偽値にしてから渡す。**
+  // classList.toggle は第2引数が undefined だと「指定」ではなく「反転」になる。
+  // S.softBad の値は確信度（数値）なので、そのまま渡すと undefined が混ざり、
+  // 赤が付いたり消えたりしていた
+  bad = !!bad;
+  const was = box.dataset.wasred === '1';
+  box.classList.toggle('bad', bad);
+  box.classList.toggle('done', !bad && was);
+  box.dataset.red = bad ? 1 : 0;
+}
+
 function numField(owner, field, label, value, isBad, soft){
   const key = owner + '.' + field;
   const bad = isBad && !(soft && S.ack[key]);
-  return `<div class="fld ${bad ? 'bad' : ''}" data-red="${bad ? 1 : 0}">
+  const mk = fieldMark(key, bad);
+  return `<div class="fld ${mk.cls}" data-red="${mk.red}" data-wasred="${mk.was}">
     <div class="lb">${label}</div>
     <input data-owner="${esc(owner)}" data-field="${esc(field)}" data-key="${key}" data-soft="${soft ? 1 : 0}"
       type="number" inputmode="numeric"
@@ -1704,16 +1780,39 @@ function refreshKillRed(){
     if(!box) return;
     // 確信度による赤は別管理なので、合計が合っていてもそちらが残ることがある
     const soft = i.dataset.soft === '1' && !S.ack[i.dataset.key] && S.softBad[i.dataset.key];
-    const bad = !st.ok || soft;
-    box.classList.toggle('bad', bad);
-    box.dataset.red = bad ? 1 : 0;
+    paintFieldState(box, !st.ok || soft);
   });
   refreshConfirmLook();
 }
 
 /** 1項目直したらすぐ送る。まとめて送らないので、切れても失うのは最後の1項目だけ */
+/** 1つの欄を、いまの入力に合わせて塗り直す */
+function recomputeFieldRed(input){
+  const box = input.closest('.fld');
+  if(!box) return;
+  // キル関係は合計の辻褄で決まるので、まとめて数え直す側に任せる
+  if(input.dataset.field === 'kills' || input.dataset.key === 'match.squad_total_kills'){
+    refreshKillRed();
+    return;
+  }
+  // もともと赤くない欄は触らない
+  if(box.dataset.wasred !== '1'){ refreshConfirmLook(); return; }
+  paintFieldState(box, input.value === '' || !S.ack[input.dataset.key]);
+  refreshConfirmLook();
+}
+
 function bindNumberInput(input){
   input.dataset.original = input.value;
+
+  // **値を書き換えたなら、その欄には目を通したということ。**
+  // 以前は「ぜんぶ確認した」を押すまで赤いままで、
+  // 直した本人にも「どこを片づけたか」が見えなかった。
+  // 触れただけ（フォーカス）では消さない ―― スクロール中に指が当たるため
+  input.oninput = () => {
+    S.ack[input.dataset.key] = true;
+    recomputeFieldRed(input);
+  };
+
   input.onchange = () => {
     const owner = input.dataset.owner;
     const field = input.dataset.field;
@@ -1821,6 +1920,18 @@ function runTrioPick(list, accById, shotId){
     const posName = e.card_slot === 'center' ? '中央' : e.card_slot === 'left' ? '左' : '右';
     const who = stranger ? '野良' : (acc.person_name || e.raw_name || '');
 
+    // **いま何を選んだかを、選んでいる最中も見えるようにする。**
+    // 以前はシートを閉じるまで結果が見えず、押し間違いに気づけなかった
+    const cells = list.map((x, n) => {
+      const p = x.card_slot === 'center' ? '中央' : x.card_slot === 'left' ? '左' : '右';
+      const v = picked[x.entry_id];
+      return {
+        pos: p,
+        name: v === undefined ? '' : (v ? (legendName(v) || v) : 'なし'),
+        now: n === idx
+      };
+    });
+
     openLegendSheet(e.entry_id, e.account_id, id => {
       picked[e.entry_id] = id;
       idx++;
@@ -1831,6 +1942,9 @@ function runTrioPick(list, accById, shotId){
       rate: idx / list.length,
       clearLabel: stranger ? 'この人は飛ばす（野良）' : 'この人は分からない',
       shotId: shotId,
+      picked: cells,
+      // 1人目には戻り先が無い
+      onBack: idx > 0 ? () => { idx--; delete picked[list[idx].entry_id]; step(); } : null,
       // リザルト画面は3人が横に並ぶので、その人のところへ寄せて開く
       focus: e.card_slot === 'left' ? 0 : e.card_slot === 'center' ? 1 : 2,
       keepOpen: true
@@ -1970,9 +2084,16 @@ function openLegendSheet(entryId, accountId, onPick, opt){
           ${opt.head ? `
             <div class="picknow">
               <div class="spread"><span class="big">${esc(opt.head)}</span>
+                ${opt.onBack ? '<button class="backbtn" id="pickback">1つ戻る</button>' : ''}
                 <span class="step">${esc(opt.step || '')}</span></div>
               <div class="bar"><i style="width:${Math.round((opt.rate || 0) * 100)}%"></i></div>
             </div>` : ''}
+          ${(opt.picked && opt.picked.length) ? `
+            <div class="pick3">${opt.picked.map(c => `
+              <div class="c ${c.now ? 'now' : ''}">
+                <div class="p">${esc(c.pos)}</div>
+                <div class="n ${c.name ? '' : 'empty'}">${esc(c.name || (c.now ? '選んでいます' : '—'))}</div>
+              </div>`).join('')}</div>` : ''}
           ${opt.shotId ? `
             <div class="peek">
               <img id="peekimg" data-file-id="${esc(opt.shotId)}" alt="リザルト画面"
@@ -2009,6 +2130,10 @@ function openLegendSheet(entryId, accountId, onPick, opt){
   // 見出しは上に貼り付いたままなので、そこからいつでも開けるようにする
   const pt = sheet.querySelector('#peektop');
   if(pt) pt.onclick = showShot;
+  // **間違えてタップしたときに、1人前へ戻れるようにする。**
+  // 選び直しのために3人ぶん最初からやり直す必要は無い
+  const bk = sheet.querySelector('#pickback');
+  if(bk) bk.onclick = () => { close(); opt.onBack(); };
   // 失敗したままなら「もう一度」を出す。取りに行っていなければ取りに行く
   if(opt.shotId && !peekSrc){
     if(S.images[opt.shotId] === 'failed') paintImageFailed(opt.shotId);

@@ -87,6 +87,11 @@
   .acc .k{ font-size:10px; color:var(--ink4); flex:none; width:52px; }
   .acc .n{ font-size:12.5px; }
   .acc .u{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:9.5px; color:var(--ink4); letter-spacing:-.04em; margin-left:auto; }
+  .acc .unlink{
+    flex:none; background:none; border:1px solid var(--line); color:var(--ink3);
+    font-family:'RocknRoll One',sans-serif; font-size:10.5px;
+    padding:5px 9px; border-radius:8px; cursor:pointer;
+  }
   .strow{ background:var(--card); border-radius:16px; padding:14px 15px; margin:0 18px 8px; }
   .strow .sh{ display:flex; align-items:baseline; gap:10px; }
   .strow .sn{ font-size:13.5px; }
@@ -425,6 +430,12 @@ function fmtAgo(ms){
  * タブを初めて開くときの2〜3秒を無くすため。いま見ている画面が出てから走らせる。
  * 取れなかったら黙って諦める（次に開いたときに取りに行くだけ）。
  */
+// この画面を離れたら立てる印。先読みはこれを見て打ち切る。
+// **裏に回っただけ（document.hidden）は「やめる」ではなく「待つ」。**
+// 戻ってきたときに先読みが死んでいると、次の画面がまた遅くなる
+var WARM_STOP = false;
+window.addEventListener('pagehide', function(){ WARM_STOP = true; });
+
 function warmOtherScreens(myPersonId){
   const jobs = [
     ['home',                       { action:'home' }],
@@ -441,6 +452,11 @@ function warmOtherScreens(myPersonId){
   let i = 0;
   const next = () => {
     if(i >= jobs.length) return;
+    // **画面を離れたら、残りの先読みはやめる。**
+    // サーバーは1本ずつしか処理しない。要らなくなった問い合わせで塞ぐと、
+    // いま開こうとしている画面がその後ろで何十秒も待つ（実測で再現した）
+    if(WARM_STOP) return;
+    if(document.hidden){ setTimeout(next, 2000); return; }
     const [key, params] = jobs[i++];
     // すでに新しい控えがあるなら飛ばす（5分もてば十分）
     let fresh = false;
@@ -952,10 +968,14 @@ function renderPerson(){
   const p = S.target;
   titleEl.textContent = p.name; backEl.hidden = false;
 
+  // **紐づけ間違いを、画面から戻せるようにする。**
+  // これが無いと、誤って紐づけたときに accounts シートを直接いじるしか手が無い
   const accs = p.accounts.map(a =>
     '<div class="acc"><span class="k">' + (a.kind === 'main' ? '本アカ' : 'サブアカ') + '</span>' +
     '<span class="n">' + esc(a.name) + '</span>' +
-    '<span class="u">' + esc(a.uid || '—') + '</span></div>').join('');
+    '<span class="u">' + esc(a.uid || '—') + '</span>' +
+    '<button class="unlink" data-unlink="' + esc(a.account_id) + '" ' +
+      'data-aname="' + esc(a.name) + '">野良に戻す</button></div>').join('');
 
   const aliases = [].concat.apply([], p.accounts.map(a => a.aliases || []));
   const hist = aliases.length
@@ -972,7 +992,11 @@ function renderPerson(){
     '</div></div>' +
     '<button class="btn solid" id="saveName">名前を直す</button>' +
     '<div class="sechead"><div class="t">アカウント</div><div class="n">' + p.accounts.length + '</div></div>' +
-    '<div class="card">' + (accs || '<div class="sub">まだありません</div>') + '</div>' +
+    '<div class="card">' + (accs || '<div class="sub">まだありません</div>') +
+      (p.accounts.length ? '<div class="sub" style="margin-top:11px">' +
+        '間違えて紐づけたら「野良に戻す」で外せます。' +
+        '<b>試合の記録は消えません。</b>集計から外れるだけで、もう一度紐づければ戻ります。</div>' : '') +
+    '</div>' +
     '<div class="sec">名前の履歴</div>' +
     '<div class="sub" style="margin:-4px 18px 11px">ゲーム内で改名しても、過去の試合が迷子にならないように残します。</div>' +
     '<div class="card">' + hist + '</div>' +
@@ -1273,6 +1297,22 @@ function bind(){
       try{
         const r = await apiPost({ action:'link_account', account_id:aid, person_id:pid, kind:'sub' });
         toast(who.name + ' に紐づけました（' + r.recounted_games + '戦を数え直し）');
+        await load(); S.view = 'people'; render();
+      }catch(err){ toast(err.message, true); }
+    };
+  });
+
+  app.querySelectorAll('[data-unlink]').forEach(b => {
+    b.onclick = async () => {
+      if(!S.key){ toast('編集キーが要ります。登録タブの設定で入れてください', true); return; }
+      const nm = b.dataset.aname;
+      if(!confirm('「' + nm + '」の紐づけを外して、野良に戻します。\n\n' +
+        'このアカウントの試合は集計から外れます。試合の記録そのものは消えません。\n' +
+        'もう一度「人とアカウント」から紐づければ元に戻せます。よろしいですか？')) return;
+      try{
+        // kind を stranger にすると、サーバー側が person_id も空に戻す
+        const r = await apiPost({ action:'link_account', account_id:b.dataset.unlink, kind:'stranger' });
+        toast(nm + ' を野良に戻しました（' + r.recounted_games + '戦を数え直し）');
         await load(); S.view = 'people'; render();
       }catch(err){ toast(err.message, true); }
     };

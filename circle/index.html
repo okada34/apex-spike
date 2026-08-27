@@ -435,6 +435,12 @@ function fmtAgo(ms){
  * タブを初めて開くときの2〜3秒を無くすため。いま見ている画面が出てから走らせる。
  * 取れなかったら黙って諦める（次に開いたときに取りに行くだけ）。
  */
+// この画面を離れたら立てる印。先読みはこれを見て打ち切る。
+// **裏に回っただけ（document.hidden）は「やめる」ではなく「待つ」。**
+// 戻ってきたときに先読みが死んでいると、次の画面がまた遅くなる
+var WARM_STOP = false;
+window.addEventListener('pagehide', function(){ WARM_STOP = true; });
+
 function warmOtherScreens(myPersonId){
   const jobs = [
     ['home',                       { action:'home' }],
@@ -451,6 +457,11 @@ function warmOtherScreens(myPersonId){
   let i = 0;
   const next = () => {
     if(i >= jobs.length) return;
+    // **画面を離れたら、残りの先読みはやめる。**
+    // サーバーは1本ずつしか処理しない。要らなくなった問い合わせで塞ぐと、
+    // いま開こうとしている画面がその後ろで何十秒も待つ（実測で再現した）
+    if(WARM_STOP) return;
+    if(document.hidden){ setTimeout(next, 2000); return; }
     const [key, params] = jobs[i++];
     // すでに新しい控えがあるなら飛ばす（5分もてば十分）
     let fresh = false;
@@ -713,10 +724,15 @@ function renderMain(){
           '<div class="gn">' + g.value + '<small>回</small></div></div>' +
         '<div class="gv sub"><div class="gl">' + esc(g.other_metric_label) + '</div>' +
           '<div class="gn">' + g.other_value + '<small>回</small></div></div>' +
-        '<div class="gright"><div class="a">今季</div><div class="b">' + g.match_count + '戦</div></div>' +
+        '<div class="gright"><div class="a">3人そろった</div><div class="b">' + g.match_count + '戦</div></div>' +
       '</div>' +
       goalBar(g) +
     '</div>' +
+    // **数字がどこから来ているかを、その場で言う。**
+    // 野良が入った試合は勝っても数えないので、戦数が合わないと混乱する
+    (g.excluded_count ? '<div class="sub" style="margin:9px 18px 0">' +
+      '野良が入った <b>' + g.excluded_count + '戦</b> は、サークルの成績から外しています。' +
+      'メンバー3人だけでやった試合で数えます。</div>' : '') +
     (g.exists ? '' : '<div class="sub" style="margin:9px 18px 0">まだ目標が決められていないので、いまは初期値（' +
       g.t1 + '／' + g.t2 + '／' + g.t3 + '）で出しています。</div>') +
     '<div class="goalEditBtn"><button id="editGoal">' +
@@ -801,7 +817,7 @@ function renderGoalEdit(){
       '<div class="gh"><div class="gt">サークル目標進捗状況</div><div class="gs">' + esc(g.split_label) + '</div></div>' +
       '<div class="gvals"><div class="gv"><div class="gl">' + esc(metricLabel(g.metric)) + '</div>' +
       '<div class="gn">' + preview.value + '<small>回</small></div></div>' +
-      '<div class="gright"><div class="a">今季</div><div class="b">' + preview.match_count + '戦</div></div></div>' +
+      '<div class="gright"><div class="a">3人そろった</div><div class="b">' + preview.match_count + '戦</div></div></div>' +
       goalBar(preview) +
     '</div>' +
     hist +
