@@ -140,6 +140,32 @@
   .legbox.bad{ border-color:var(--red); }
   .shotby{ text-align:right; font-size:10px; color:var(--ink4); margin-top:9px; }
 
+  /* === 選びながらスクショを見る ===
+     キャラの絵は小さく、「ん？このキャラなんだ？」となる。
+     以前はシートが全面に出てスクショが隠れ、拡大もできなかった。
+     シートの上に細く出し、押すと拡大して横に動かせるようにする */
+  .peek{ margin:10px 0 2px; }
+  .peek img{ width:100%; display:block; border-radius:10px; }
+  .peek .hint{ font-size:10px; color:var(--ink4); text-align:center; margin-top:5px; }
+
+  .zoom{ position:fixed; inset:0; z-index:60; background:#000; display:flex; flex-direction:column; }
+  .zoom .bar{
+    flex:none; display:flex; align-items:center; gap:8px; padding:10px 12px;
+    padding-top:calc(10px + env(safe-area-inset-top)); background:rgba(0,0,0,.85);
+  }
+  .zoom .bar .t{ font-family:'Dela Gothic One',sans-serif; font-size:13px; color:#fff; }
+  .zoom .bar .sp{ margin-left:auto; display:flex; gap:6px; }
+  .zoom .bar button{
+    background:#2E2559; border:0; color:#fff; font-family:'RocknRoll One',sans-serif;
+    font-size:11.5px; padding:8px 12px; border-radius:9px; cursor:pointer;
+  }
+  .zoom .bar button.on{ background:var(--lime); color:var(--invert); }
+  /* 画像は画面より大きくして、指でなぞって動かせるようにする。
+     ピンチが使えない場面でも拡大して見られる */
+  .zoom .canvas{ flex:1; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .zoom .canvas img{ display:block; height:auto; }
+
+
   /* === 3人分をまとめて選ぶ ===
      以前は1人ずつ「選ぶ」を押して、シートを開いて閉じてを3回。
      **スクショのすぐ下に置き、左→中央→右の順に3回タップするだけ**にした */
@@ -353,7 +379,11 @@
     display:flex; align-items:center; justify-content:center;
     opacity:0; pointer-events:none; transition:opacity .18s;
   }
-  .busy.on{ opacity:1; pointer-events:auto; }
+  /* **遮断は即座に、見た目だけ遅らせる。**
+     以前は .on が付くまで pointer-events が none で、
+     出るまでの0.4秒は素早い二度押しを受け付けていた */
+  .busy.blocking{ pointer-events:auto; }
+  .busy.on{ opacity:1; }
   .busy .box{
     background:var(--card); border-radius:18px; padding:22px 26px;
     display:flex; flex-direction:column; align-items:center; gap:13px;
@@ -726,12 +756,14 @@ function markSaving(d){
     document.body.appendChild(BUSY_EL);
   }
   if (n > 0) {
+    BUSY_EL.classList.add('blocking');   // 押せなくするのは今すぐ
     if (!BUSY_TIMER) BUSY_TIMER = setTimeout(function () {
       BUSY_EL.classList.add('on'); BUSY_TIMER = null;
     }, 400);
   } else {
     if (BUSY_TIMER) { clearTimeout(BUSY_TIMER); BUSY_TIMER = null; }
     BUSY_EL.classList.remove('on');
+    BUSY_EL.classList.remove('blocking');
   }
 }
 
@@ -1560,14 +1592,16 @@ function paintTrio(entries, accById, legById){
     '</div>';
 
   const b = document.getElementById('trioPick');
-  if(b) b.onclick = () => runTrioPick(list, accById);
+  // スクショを渡す。選びながら見られるようにするため
+  const shot = S.images[((S.detail || {}).match || {}).image_ref || ''];
+  if(b) b.onclick = () => runTrioPick(list, accById, (shot && shot !== 'loading') ? shot : '');
 }
 
 /**
  * 左 → 中央 → 右 の順に、続けて選んでもらう。
  * シートは開いたままで、選ぶたびに「いま何人目か」だけが変わる。
  */
-function runTrioPick(list, accById){
+function runTrioPick(list, accById, shot){
   const picked = {};          // entry_id -> legend_id
   let idx = 0;
 
@@ -1588,6 +1622,9 @@ function runTrioPick(list, accById){
       step: (idx + 1) + ' / ' + list.length,
       rate: idx / list.length,
       clearLabel: stranger ? 'この人は飛ばす（野良）' : 'この人は分からない',
+      shot: shot,
+      // リザルト画面は3人が横に並ぶので、その人のところへ寄せて開く
+      focus: e.card_slot === 'left' ? 0 : e.card_slot === 'center' ? 1 : 2,
       keepOpen: true
     });
   };
@@ -1606,7 +1643,7 @@ function saveTrio(list, picked){
     .then(r => {
       toast(items.length + '人分登録しました');
       // 手元の控えも合わせてから描き直す
-      const d = S.details[S.detail];
+      const d = S.detail;   // S.detail は詳細データ本体
       if(d) d.entries.forEach(e => {
         if(picked[e.entry_id] !== undefined) { e.legend_id = picked[e.entry_id]; e.legend_source = 'manual'; }
       });
@@ -1626,6 +1663,77 @@ function saveTrio(list, picked){
  *   clearLabel  「選ばない」のボタンの文言
  *   keepOpen    選んでも閉じない（次の人へ進む）
  */
+/**
+ * スクショを拡大して見る。
+ *
+ * === なぜ作ったか ===
+ *
+ * キャラの絵は小さく、「ん？このキャラなんだ？」となる。
+ * 選択シートが全面に出るとスクショが隠れ、後ろにあっても拡大できなかった。
+ *
+ * 画面より大きく表示して、指でなぞって動かせるようにする。
+ * リザルト画面は3人が横に並ぶので、**左・中央・右へ一発で寄れる**ボタンも置く。
+ *
+ * @param {string} src      画像のデータURL
+ * @param {number} [focus]  0=左 1=中央 2=右。開いた時点で寄せる場所
+ */
+function openShotZoom(src, focus){
+  const z = document.createElement('div');
+  z.className = 'zoom';
+  z.innerHTML =
+    '<div class="bar">' +
+      '<span class="t">スクショ</span>' +
+      '<span class="sp">' +
+        '<button data-go="0">左</button>' +
+        '<button data-go="1">中央</button>' +
+        '<button data-go="2">右</button>' +
+        // **開いた時点ですでに2.2倍**なので、最初は「等倍」に戻す側を出す
+        '<button data-z="1">等倍</button>' +
+        '<button data-close="1">閉じる</button>' +
+      '</span>' +
+    '</div>' +
+    '<div class="canvas"><img src="' + src + '" alt="リザルト画面"></div>';
+  document.body.appendChild(z);
+
+  const canvas = z.querySelector('.canvas');
+  const img = z.querySelector('img');
+  let scale = 2.2;                       // 画面幅に対する倍率
+  const apply = () => { img.style.width = Math.round(scale * 100) + '%'; };
+  apply();
+
+  // 3人は横に並ぶので、幅を3等分して寄せる
+  const goTo = n => {
+    const w = img.scrollWidth || canvas.clientWidth * scale;
+    const target = w * (n + 0.5) / 3 - canvas.clientWidth / 2;
+    canvas.scrollLeft = Math.max(0, target);
+  };
+  const zbtn = z.querySelector('[data-z]');
+  z.querySelectorAll('[data-go]').forEach(b => {
+    b.onclick = () => {
+      z.querySelectorAll('[data-go]').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      goTo(Number(b.dataset.go));
+    };
+  });
+  zbtn.onclick = () => {
+    // 等倍 ⇄ 拡大。ピンチが効かない場面でも大きくできるように
+    scale = (scale > 1.2) ? 1 : 2.2;
+    zbtn.textContent = (scale > 1.2) ? '等倍' : '拡大';
+    apply();
+  };
+  z.querySelector('[data-close]').onclick = () => z.remove();
+
+  // 開いた時点で、いま選んでいる人のところへ寄せる
+  const f = (typeof focus === 'number') ? focus : 1;
+  img.onload = () => goTo(f);
+  setTimeout(() => {
+    goTo(f);
+    const b = z.querySelector('[data-go="' + f + '"]');
+    if(b) b.classList.add('on');
+  }, 60);
+}
+
+
 function openLegendSheet(entryId, accountId, onPick, opt){
   opt = opt || {};
   const recent = (S.masters.recent_legends || {})[accountId] || [];
@@ -1651,6 +1759,11 @@ function openLegendSheet(entryId, accountId, onPick, opt){
             <span class="step">${esc(opt.step || '')}</span></div>
           <div class="bar"><i style="width:${Math.round((opt.rate || 0) * 100)}%"></i></div>
         </div>` : ''}
+        ${opt.shot ? `
+          <div class="peek">
+            <img src="${opt.shot}" alt="リザルト画面" id="peekimg">
+            <div class="hint">押すと拡大できます</div>
+          </div>` : ''}
 
       ${big.length ? `
         <div class="sub" style="margin-top:14px">よく使う3体</div>
@@ -1671,6 +1784,9 @@ function openLegendSheet(entryId, accountId, onPick, opt){
 
   const close = () => sheet.remove();
   sheet.querySelector('#lclose').onclick = close;
+  // スクショを押したら拡大して見る。**選ぶ手を止めずに確認できるように**
+  const pk = sheet.querySelector('#peekimg');
+  if(pk) pk.onclick = () => openShotZoom(opt.shot, opt.focus);
   sheet.onclick = ev => { if(ev.target === sheet) close(); };
   // 呼び出し元が受け取り方を決める。試合の詳細では即保存、まとめ選択では手元に貯める
   const pick = onPick || (id => setLegend(entryId, id));

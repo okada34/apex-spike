@@ -239,7 +239,11 @@
     display:flex; align-items:center; justify-content:center;
     opacity:0; pointer-events:none; transition:opacity .18s;
   }
-  .busy.on{ opacity:1; pointer-events:auto; }
+  /* **遮断は即座に、見た目だけ遅らせる。**
+     以前は .on が付くまで pointer-events が none で、
+     出るまでの0.4秒は素早い二度押しを受け付けていた */
+  .busy.blocking{ pointer-events:auto; }
+  .busy.on{ opacity:1; }
   .busy .box{
     background:var(--card); border-radius:18px; padding:22px 26px;
     display:flex; flex-direction:column; align-items:center; gap:13px;
@@ -575,12 +579,14 @@ function markSaving(d){
     document.body.appendChild(BUSY_EL);
   }
   if (n > 0) {
+    BUSY_EL.classList.add('blocking');   // 押せなくするのは今すぐ
     if (!BUSY_TIMER) BUSY_TIMER = setTimeout(function () {
       BUSY_EL.classList.add('on'); BUSY_TIMER = null;
     }, 400);
   } else {
     if (BUSY_TIMER) { clearTimeout(BUSY_TIMER); BUSY_TIMER = null; }
     BUSY_EL.classList.remove('on');
+    BUSY_EL.classList.remove('blocking');
   }
 }
 
