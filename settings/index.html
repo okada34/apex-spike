@@ -701,7 +701,7 @@ function ingestBlock(){
     ['queued', '取り込み待ち', 'var(--ink2)'],
     ['skipped_duplicate', '同じ画像なので飛ばした', 'var(--ink3)'],
     ['failed', '読めなかった', 'var(--red)'],
-    ['given_up', '諦めたぶん', 'var(--ink3)']
+    ['given_up', '諦めたもの', 'var(--ink3)']
   ].filter(([k]) => c[k]).map(([k, label, color]) =>
     '<div class="acc"><span class="n" style="font-size:12px">' + label + '</span>' +
     '<span class="u" style="color:' + color + ';font-size:12px">' + c[k] + '枚</span></div>').join('');
@@ -714,14 +714,14 @@ function ingestBlock(){
   const fails = (g.failures || []).length
     ? '<div class="warn" style="margin-top:10px">' +
       '<div class="dela" style="font-size:12.5px;color:' + (live.length ? 'var(--red)' : 'var(--ink3)') + '">' +
-      (live.length ? '読めなかった ' + live.length + '枚' : '読めなかったぶんは全部諦めています') + '</div>' +
+      (live.length ? '読めなかった ' + live.length + '枚' : '読めなかったものは全部諦めています') + '</div>' +
       (live.length ? '<div class="sub" style="margin-top:9px">' + live.map(f =>
         '<b style="color:var(--ink2)">' + esc(f.file_name) + '</b><br>' +
         esc(String(f.error).split(String.fromCharCode(10))[0].split(': ')[0])
       ).join('<br><br>') + '</div>' : '') +
       (gone.length
         ? '<div class="sub" style="margin-top:11px;color:var(--ink3)">' +
-          '<b style="color:var(--ink3)">諦めたぶん ' + gone.length + '枚</b><br>' +
+          '<b style="color:var(--ink3)">諦めたもの ' + gone.length + '枚</b><br>' +
           gone.map(f => esc(f.file_name)).join('<br>') + '</div>'
         : '') +
       // 撮り方の注意は、まだ直せる失敗が残っているときだけ。
@@ -730,7 +730,7 @@ function ingestBlock(){
         ? '<div class="sub" style="margin-top:11px;color:var(--ink2)">' +
           'PS5のリザルト画面は<b>タブが分かれています</b>。' +
           '「ライブ／リザルト」の<b>リザルト</b>側で、さらに<b>「リザルト」タブ</b>を選んでから撮ってください。' +
-          '順位と3人ぶんの成績は、そこにしか出ません。</div>'
+          '順位と3人分の成績は、そこにしか出ません。</div>'
         : '') +
       '</div>'
     : '';
@@ -994,7 +994,7 @@ function renderSplits(){
       (s.is_now ? '<span class="now">記録中</span>' : '') + '</div>' +
       '<div class="d">' + esc(s.start_date) + ' 〜 ' + esc(s.end_date) + '</div>' +
       (note ? '<div class="est">' + note + '</div>' : '') +
-      '<div class="n">' + (s.session_count ? s.session_count + '日ぶんの記録' : '記録なし') + '</div>' +
+      '<div class="n">' + (s.session_count ? s.session_count + '日分の記録' : '記録なし') + '</div>' +
       '<button data-edit="' + esc(s.split_id) + '">日程を直す</button></div>';
   }).join('');
 
@@ -1320,7 +1320,7 @@ function bind(){
         season_no:g.season_no, split_no:g.split_no,
         start_date:g.start_date, end_date:g.end_date,
         start_estimated:!!g.start_estimated, end_estimated:!!g.end_estimated });
-      toast('決めました' + (r.moved_sessions ? '（' + r.moved_sessions + '日ぶんを貼り直し）' : ''));
+      toast('決めました' + (r.moved_sessions ? '（' + r.moved_sessions + '日分を貼り直し）' : ''));
       await load(); S.view = 'splits'; render();
     }catch(err){ toast(err.message, true); }
   };

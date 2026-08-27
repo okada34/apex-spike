@@ -578,7 +578,7 @@ function legendCard(l, withRank){
   const color = CLASS_COLOR[l.cls] || 'var(--ink3)';
   const clsJa = CLASS_JA[l.cls] || '';
 
-  // 何戦ぶんの平均かだけでは、どこまで信じてよいか分からない。
+  // 何戦分の平均かだけでは、どこまで信じてよいか分からない。
   // 段の名前（暫定／参考値／傾向アリ／クセ判明）を数字のすぐ隣に置く
   const t = (S.data.tiers || [])[l.tier_index];
   const tierChip = t
