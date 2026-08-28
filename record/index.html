@@ -1090,6 +1090,7 @@ function paintList(){
 
 
     <div id="secBad"></div>
+    <div id="bulkHere"></div>
     <div id="secOk"></div>
     <div id="secDone"></div>
 
@@ -1108,8 +1109,13 @@ function paintList(){
     </div>` : ''}
   `;
 
-  paintSection('secBad', '先に直すもの', bad, 'bad', 'キル数が合わない試合などを先頭に固定しています。');
-  paintSection('secOk',  'これから見るもの', ok, '', '数字に問題はありません。目を通して承認してください。');
+  // **「先に直すもの」は順番の話に読めて、何をすればいいか分からなかった。**
+  // ここに並ぶのは「キル数が合わない」「キャラが決まっていない」など、
+  // 手を入れないと確定できない試合。やることを名前で言う
+  paintSection('secBad', '直す・選ぶ必要がある試合', bad, 'bad',
+    'キル数が合わない、キャラが決まっていない、などです。');
+  paintSection('secOk',  '見て承認するだけの試合', ok, '',
+    '数字に問題はありません。目を通して承認してください。');
 
   if(c.confirmed){
     document.getElementById('secDone').innerHTML =
@@ -1134,7 +1140,11 @@ function paintList(){
     ? 'キャラをまとめて直す（' + missing + '試合分残り）'
     : 'キャラをまとめて直す';
   bulkBtn.onclick = () => openBulkLegends('');
-  app.appendChild(bulkBtn);
+  // **「直す・選ぶ必要がある試合」のすぐ下へ。**
+  // 以前は画面のいちばん下（確定ずみの後ろ）にあり、
+  // 「終わったものの下に、これからやる作業がある」状態だった
+  const bulkHost = document.getElementById('bulkHere');
+  (bulkHost || app).appendChild(bulkBtn);
 
   const gu = document.getElementById('giveUp');
   const sf = document.getElementById('seeFailed');
@@ -1456,12 +1466,14 @@ function renderDetail(){
       : '';
 
     document.getElementById('reason').innerHTML = todo.length ? `
-      <div class="card red" style="margin-top:12px">
+      <div class="card red" style="margin-top:12px" id="reasonCard">
+        <div id="reasonTodo">
         <div style="display:flex;align-items:center;gap:8px">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FF5470" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 8v5"></path><path d="M12 16.5v.5"></path><circle cx="12" cy="12" r="9"></circle></svg>
           <span class="dela" style="font-size:13.5px">確認してほしいこと <span class="mono" style="font-size:12px">${todo.length}</span></span>
         </div>
         <ul class="rlist">${todo.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+        </div>
         ${foldBtn}
       </div>` : `
       <div class="card" style="margin-top:12px;border-left:4px solid var(--ink4)">
@@ -1751,9 +1763,22 @@ function redLeft(){
 }
 
 function refreshConfirmLook(){
+  const n = redLeft();
+
+  // **赤枠を全部片づけたら「確認してほしいこと」は消す。**
+  // 出したままだと「まだ何があるんだ」と探させることになる。
+  // たたんである「こちらで処理ずみ」は記録なので残す
+  const rc = document.getElementById('reasonCard');
+  const rt = document.getElementById('reasonTodo');
+  if(rc && rt){
+    const cleared = n === 0;
+    rt.hidden = cleared;
+    rc.classList.toggle('red', !cleared);
+    rc.hidden = cleared && !document.getElementById('doneMore');
+  }
+
   const btn = document.getElementById('confirm');
   if(!btn) return;
-  const n = redLeft();
   btn.classList.toggle('wait', n > 0);
   btn.textContent = n > 0 ? ('残り' + n + 'か所を見てから確定') : 'この試合を確定する';
   const nr = document.getElementById('nextRed');
@@ -2547,7 +2572,10 @@ function renderBulk(){
       }
       const cls = id ? 'bslot filled' : 'bslot empty';
       const color = leg ? (CLASS_COLOR[leg.legend_class] || '') : '';
+      // スクショと、その人が写っている位置。選ぶ画面でも見られるようにする
+      const focus = e.card_slot === 'left' ? 0 : e.card_slot === 'center' ? 1 : 2;
       return `<div class="${cls}" data-slot="${esc(e.entry_id)}" data-acc="${esc(e.account_id)}"
+                   data-shot="${esc(m.image_ref || '')}" data-focus="${focus}"
                    ${color ? 'style="border-color:'+color+'"' : ''}>
         <div class="who">${esc(who)}</div>
         <div class="leg">${leg ? esc(leg.name_ja) : '選ぶ'}</div>
@@ -2576,7 +2604,7 @@ function renderBulk(){
     body +
     `<div class="bbar">
        <button class="btn" id="bulkGo" ${ch.length === 0 ? 'disabled' : ''}>
-         ${ch.length ? `変更を確かめて送る（${ch.length}枠）` : '変えたところがありません'}
+         ${ch.length ? `変更を送る（${ch.length}枠）` : '変えたところがありません'}
        </button>
      </div>`;
 
@@ -2584,6 +2612,11 @@ function renderBulk(){
     el.onclick = () => openLegendSheet(el.dataset.slot, el.dataset.acc, id => {
       S.draft[el.dataset.slot] = id;
       renderBulk();
+    }, {
+      // **ここでもスクショを見ながら選べるようにする。**
+      // 3人まとめて選ぶときは出るのに、まとめ修正では出ていなかった
+      shotId: el.dataset.shot,
+      focus: Number(el.dataset.focus)
     });
   });
   app.querySelectorAll('[data-same]').forEach(b => {
@@ -2607,68 +2640,77 @@ function renderBulk(){
 }
 
 /**
- * 送る前に、何がどう変わるかを全部見せる。
+ * まとめて直したキャラを送り、直すところが無くなった試合は続けて確定する。
  *
- * まとめて直す画面は一度に何十枠も動かせるので、
- * 「上と同じ構成にする」を押し間違えたことに気づけないまま送れてしまう。
- * 送信は取り消せない（履歴には残るが、戻すのは手作業）ので、ここで一度止める。
+ * === 送る前の一覧はやめた（2026-08-27）===
+ *
+ * 以前は「何がどう変わるか」を一覧で見せてから送っていた。
+ * **依頼者から「スクショを覚えていないので確認しようがない」と指摘された。**
+ * そのとおりで、`コンジット → レイス` という字面だけでは、
+ * どの試合の話か思い出せない。
+ * **確認は、いま見ている画面そのものがしている。**
+ * まとめ修正の画面は、試合ごとにスクショと選んだキャラを並べて出している。
+ *
+ * === 続けて確定する（2026-08-27）===
+ *
+ * まとめて直したのに、確定は1件ずつ画面を開かせていた。
+ * **「まとめて選択した恩恵が薄い」**という指摘を受けて、
+ * 送ったあとに「まとめて確定するか」を一度だけ聞く。
+ * **どれが確定できるかはサーバーが1件ずつ検査する。**画面側は判断しない。
  */
 function sendBulkLegends(){
   if(!S.key){ toast('編集キーが要ります。登録タブの設定で入れてください', true); return; }
   const ch = bulkChanges();
   if(!ch.length){ toast('変えたところがありません'); return; }
 
-  const rows = ch.map(c => `
-    <div class="crow">
-      <span class="cseq">${c.seq}戦目</span>
-      <span class="cwho">${esc(c.who)}</span>
-      <span class="cval">
-        <span class="from">${c.from ? esc(c.from) : '空欄'}</span>
-        <span class="arw">→</span>
-        <span class="to ${c.to ? '' : 'blank'}">${c.to ? esc(c.to) : '空欄にする'}</span>
-      </span>
-    </div>`).join('');
+  const go = document.getElementById('bulkGo');
+  const back = () => { if(go){ go.disabled = false; go.textContent = '変更を送る（' + ch.length + '枠）'; } };
+  if(go){ go.disabled = true; go.textContent = '送っています…'; }
 
-  const sheet = document.createElement('div');
-  sheet.className = 'sheet';
-  sheet.innerHTML = `
-    <div class="sheetinner">
-      <div class="spread">
-        <span class="dela" style="font-size:17px">これで送ります</span>
-        <button class="btn ghost" style="width:auto;height:40px;padding:0 16px" id="cclose">やめる</button>
-      </div>
-      <div class="sub" style="margin-top:10px">${ch.length}枠が変わります。<b>ここに出ていない枠は触りません。</b></div>
-      <div class="clist">${rows}</div>
-      <button class="btn limeline" id="cgo" style="margin-top:14px">送る</button>
-    </div>`;
-  document.body.appendChild(sheet);
-
-  const close = () => sheet.remove();
-  sheet.querySelector('#cclose').onclick = close;
-  sheet.onclick = ev => { if(ev.target === sheet) close(); };
-
-  sheet.querySelector('#cgo').onclick = () => {
-    const go = sheet.querySelector('#cgo');
-    go.disabled = true; go.textContent = '送っています…';
-
-    apiPost({
-      action: 'bulk_update_legends',
-      items: ch.map(c => ({ entry_id: c.entry_id, legend_id: c.legend_id }))
+  apiPost({
+    action: 'bulk_update_legends',
+    items: ch.map(c => ({ entry_id: c.entry_id, legend_id: c.legend_id }))
+  })
+    .then(r => {
+      if(!r.ok) throw new Error(r.error || '反映できませんでした');
+      toast(r.changed + '枠を反映しました');
+      // 送った内容を手元にも反映して、押し直しても二重に送らないようにする
+      S.bulk.matches.forEach(m => m.entries.forEach(e => { e.legend_id = S.draft[e.entry_id] || ''; }));
+      S.list = null; S.details = {};
+      renderBulk();
+      return askConfirmRest();
     })
-      .then(r => {
-        if(!r.ok) throw new Error(r.error || '反映できませんでした');
-        close();
-        toast(r.changed + '枠を反映しました');
-        // 送った内容を手元にも反映して、押し直しても二重に送らないようにする
-        S.bulk.matches.forEach(m => m.entries.forEach(e => { e.legend_id = S.draft[e.entry_id] || ''; }));
-        S.list = null; S.details = {};
-        renderBulk();
-      })
-      .catch(err => {
-        go.disabled = false; go.textContent = '送る';
-        toast('反映できませんでした：' + err.message, true);
-      });
-  };
+    .catch(err => { back(); toast('反映できませんでした：' + err.message, true); });
+}
+
+/**
+ * 直すところが無くなった試合を、まとめて確定するか聞く。
+ *
+ * **確定は取り消せない**ので、黙って実行はしない。ただし聞くのは1回だけ。
+ * 何件が対象かはサーバーが決めるので、ここでは「この画面の全試合」を渡す。
+ */
+function askConfirmRest(){
+  const ids = ((S.bulk && S.bulk.matches) || [])
+    .filter(m => String(m.review_status || '') !== 'confirmed')
+    .map(m => m.match_id);
+  if(!ids.length) return;
+
+  if(!confirm('直すところが無くなった試合を、まとめて確定しますか？' + '\n' + '\n' +
+    '確定できないものは、そのまま残ります。' + '\n' +
+    '確定した試合は取り消せません（記録には残ります）。')) return;
+
+  markSaving(1);
+  return apiPost({ action:'confirm_matches', match_ids: ids })
+    .then(r => {
+      if(!r.ok) throw new Error(r.error || '確定できませんでした');
+      const rest = (r.skipped || []).length;
+      toast(r.confirmed + '試合を確定しました' +
+        (rest ? '（' + rest + '試合はまだ直すところがあります）' : ''));
+      S.list = null; S.details = {}; S.bulk = null;
+      renderList();
+    })
+    .catch(err => toast('確定できませんでした：' + err.message, true))
+    .finally(() => markSaving(-1));
 }
 
 // ===================================================================
