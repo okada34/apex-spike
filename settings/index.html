@@ -665,7 +665,15 @@ function renderMain(){
     ingestBlock()
   ) : '';
 
-  return '<div class="me"><div class="l">この端末を使っているのは</div>' +
+  // **この画面が何なのかを、いちばん上で言う。**
+  // 以前は点検カードの下に埋まっていて、下まで読まないと
+  // 「サークル全体の設定」と「この端末の設定」の区別が付かなかった
+  return '<div class="card" style="margin:4px 18px 14px"><div class="sub">' +
+      'ここは<b style="color:var(--ink2)">サークル全体の設定</b>です。<br>' +
+      'このスマホの接続先や、あなたが誰かの設定は、' +
+      '<b style="color:var(--lime)">登録タブの右上</b>から変えられます。</div></div>' +
+
+    '<div class="me"><div class="l">この端末を使っているのは</div>' +
       '<div class="h"><div class="n">' + esc(me ? me.name : '（未設定）') + '</div>' +
       '<button id="rechoose">選び直す</button></div>' +
       '<div class="sub" style="margin-top:11px">ログインは作っていません。<b>この端末が誰かを覚えているだけ</b>です。' +
@@ -894,23 +902,15 @@ function ingestBlock(){
       '<div class="sub">シートに入っているデータ全体を見て、' +
       '参照先の無い行・IDの重複・範囲外の数値などを探します。<b>何も直しません。</b></div>' +
       '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
-        '<button class="btn" id="auditRun" style="flex:1;min-width:130px">点検する</button>' +
-        '<button class="btn" id="auditRunFull" style="flex:1;min-width:130px">称号まで見る</button>' +
-        '<button class="btn" id="awardSync" style="flex:1;min-width:130px">称号を計算し直す</button>' +
+        '<button class="btn" id="auditRun" style="flex:1;min-width:150px">点検する</button>' +
+        '<button class="btn" id="awardSync" style="flex:1;min-width:150px">称号を計算し直す</button>' +
       '</div>' +
-      '<div class="sub" style="margin-top:8px">「称号まで見る」は、' +
-      'いま計算した称号と記録されている称号を突き合わせます。時間がかかります。</div>' +
+      '<div class="sub" style="margin-top:8px">' +
+      '称号も突き合わせます。<b>何も直しません。</b></div>' +
       '<div id="auditOut" style="margin-top:12px"></div>' +
     '</div>';
 
-  const whereBlock =
-    '<div class="card" style="margin-top:14px">' +
-      '<div class="sub">ここは<b style="color:var(--ink2)">サークル全体の設定</b>です。<br>' +
-      'このスマホの接続先や、あなたが誰かの設定は、' +
-      '<b style="color:var(--lime)">登録タブの右上</b>から変えられます。</div>' +
-    '</div>';
-
-  return cacheBlock + syncBlock + auditBlock + whereBlock +
+  return cacheBlock + syncBlock + auditBlock +
     '<div class="sechead"><div class="t">取り込みの結果</div></div>' +
     '<div class="card">' + (rows || '<div class="sub">まだありません</div>') + '</div>' +
     fails;
@@ -1127,34 +1127,33 @@ function bindAudit(){
   const out = document.getElementById('auditOut');
   if(!out) return;
 
+  // **「点検する」と「称号まで見る」は分けない。**
+  // 実測で差は0.6秒（6.1秒と6.7秒）しかなく、弱いほうを残す理由が無かった。
+  // 2つ並ぶと「どっちを押せばいいのか」を毎回考えさせる
   const b1 = document.getElementById('auditRun');
-  const b2 = document.getElementById('auditRunFull');
 
-  const run = async (btn, withTitles) => {
+  const run = async (btn) => {
     if(!S.key){ toast('編集キーが要ります', true); return; }
 
     // 押したことが分かるようにする。
     // **数秒かかる処理で見た目が変わらないと、押せていないと思って連打される。**
     const label = btn ? btn.textContent : '';
     if(btn){ btn.disabled = true; btn.textContent = '点検中…'; }
-    if(b1 && b1 !== btn) b1.disabled = true;
-    if(b2 && b2 !== btn) b2.disabled = true;
 
     const t0 = Date.now();
     let tick = null;
-    out.innerHTML = '<div class="sub" id="auditWait">点検しています……' +
-      (withTitles ? '<br>称号まで見るので、少し時間がかかります。' : '') + '</div>';
+    out.innerHTML = '<div class="sub" id="auditWait">点検しています……<br>' +
+      '称号も突き合わせるので、数秒かかります。</div>';
     // 経過秒数を出す。止まっていないことが見て分かる
     tick = setInterval(() => {
       const w = document.getElementById('auditWait');
       if(w) w.innerHTML = '点検しています…… ' +
-        Math.round((Date.now() - t0) / 1000) + '秒' +
-        (withTitles ? '<br>称号まで見るので、少し時間がかかります。' : '');
+        Math.round((Date.now() - t0) / 1000) + '秒<br>' +
+        '称号も突き合わせるので、数秒かかります。';
     }, 500);
 
     try {
-      const p = { action:'audit' };
-      if(withTitles) p.titles = '1';
+      const p = { action:'audit', titles:'1' };
       const j = await apiGet(p);
       out.innerHTML = auditView(j);
     } catch(err) {
@@ -1162,8 +1161,6 @@ function bindAudit(){
     } finally {
       if(tick) clearInterval(tick);
       if(btn){ btn.disabled = false; btn.textContent = label; }
-      if(b1) b1.disabled = false;
-      if(b2) b2.disabled = false;
     }
   };
 
@@ -1192,8 +1189,7 @@ function bindAudit(){
     }
   };
 
-  if(b1) b1.onclick = () => run(b1, false);
-  if(b2) b2.onclick = () => run(b2, true);
+  if(b1) b1.onclick = () => run(b1);
 }
 
 function auditView(j){
