@@ -732,7 +732,7 @@ function renderMain(){
     // 野良が入った試合は勝っても数えないので、戦数が合わないと混乱する
     (g.excluded_count ? '<div class="sub" style="margin:9px 18px 0">' +
       '野良が入った <b>' + g.excluded_count + '戦</b> は、サークルの成績から外しています。' +
-      'メンバー3人だけでやった試合で数えます。</div>' : '') +
+      '3人とも、誰のアカウントか分かっている試合だけで数えます。</div>' : '') +
     (g.exists ? '' : '<div class="sub" style="margin:9px 18px 0">まだ目標が決められていないので、いまは初期値（' +
       g.t1 + '／' + g.t2 + '／' + g.t3 + '）で出しています。</div>') +
     '<div class="goalEditBtn"><button id="editGoal">' +

@@ -746,8 +746,7 @@ function renderTitles(){
   const not  = d.titles.filter(t => !t.held);
 
   // 同点のときは持ち主が複数いる。名前が2つ並ぶ理由が分かるよう、印を添える
-  // 三銃士は組そのものが同点になることがある（trio.tied）
-  const tieMark = t => (t.tied || (t.id === 'three' && (S.data.trio_tied)))
+  const tieMark = t => t.tied
     ? '<span style="font-size:10px;color:var(--yellow);margin-left:6px">同点</span>' : '';
 
   /**
@@ -756,8 +755,8 @@ function renderTitles(){
    * **「あとどれくらいで取れるか」を出すための表示。**
    * 以前は下限が無く、初戦で誰かが全部取ってしまい、目指すものが無かった。
    *
-   * bar='none'（渡り鳥・三銃士）は出さない。
-   * 少ないほど受賞する／3人の組なので、人ごとの進捗が存在しない
+   * bar='none' の称号は出さない（いまは無い。
+   * 廃止した渡り鳥＝少ないほど受賞、三銃士＝人ごとの進捗が無い、が該当していた）
    */
   const bars = t => {
     if(!t.need || t.bar === 'none' || !(t.progress || []).length) return '';
