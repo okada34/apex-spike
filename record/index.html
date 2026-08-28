@@ -1462,7 +1462,7 @@ function renderDetail(){
            <span class="tri">▸</span>こちらで処理ずみ <span class="mono">${done.length}</span>
          </button>
          <ul class="rlist quiet" id="doneList" hidden>${
-           done.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`
+           done.map(t => `<li>${esc(t.text)}</li>`).join('')}</ul>`
       : '';
 
     document.getElementById('reason').innerHTML = todo.length ? `
@@ -1470,9 +1470,11 @@ function renderDetail(){
         <div id="reasonTodo">
         <div style="display:flex;align-items:center;gap:8px">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FF5470" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 8v5"></path><path d="M12 16.5v.5"></path><circle cx="12" cy="12" r="9"></circle></svg>
-          <span class="dela" style="font-size:13.5px">確認してほしいこと <span class="mono" style="font-size:12px">${todo.length}</span></span>
+          <span class="dela" style="font-size:13.5px">確認してほしいこと <span class="mono" style="font-size:12px" id="reasonCount">${todo.length}</span></span>
         </div>
-        <ul class="rlist">${todo.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+        <ul class="rlist">${todo.map(t =>
+          `<li data-code="${esc(t.code)}" data-red-backed="${
+            RED_BACKED_CODES.indexOf(t.code) >= 0 ? 1 : 0}">${esc(t.text)}</li>`).join('')}</ul>
         </div>
         ${foldBtn}
       </div>` : `
@@ -1656,6 +1658,20 @@ function isTodoCode(c){ return DONE_CODES.indexOf(String(c && c.code)) < 0; }
  * かぎ括弧の中だけが違うなら、名前を並べて1行にまとめる。
  * まとめられない形のものは、そのまま別々に出す（勝手に消さない）。
  */
+/**
+ * **画面の赤枠で直せる警告。**
+ *
+ * ここに無いものは、赤枠が全部片づいても消してはいけない。
+ *   撮った人が特定できない     赤枠が無い（カード右下の小さい表示だけ）
+ *   人数がおかしい             この画面では直せない
+ *   スプリットが決まっていない  設定画面で日程を入れる話
+ * **どれも確定を止める**ので、消すと「押したらエラーだけ出る」ことになる。
+ *
+ * MISSING_REQUIRED_VALUE は入れない。空欄が必ず赤枠になるとは限らない
+ * （キルの空欄は、合計が合っていれば赤くならない）
+ */
+var RED_BACKED_CODES = ['KILL_SUM_MISMATCH', 'LOW_CONFIDENCE'];
+
 function mergeCodeLines(list){
   const byCode = {};
   const order = [];
@@ -1667,14 +1683,14 @@ function mergeCodeLines(list){
   const out = [];
   order.forEach(k => {
     const arr = byCode[k];
-    if(arr.length === 1){ out.push(arr[0].detail || codeTitle(k)); return; }
+    if(arr.length === 1){ out.push({ code:k, text: arr[0].detail || codeTitle(k) }); return; }
     const names = arr.map(c => (String(c.detail || '').match(/「(.+?)」/) || [])[1]).filter(Boolean);
     const rest  = arr.map(c => String(c.detail || '').replace(/「.+?」/, ''))
                      .filter((v, i, a) => a.indexOf(v) === i);
     if(names.length === arr.length && rest.length === 1){
-      out.push(names.map(n => '「' + n + '」').join('') + rest[0]);
+      out.push({ code:k, text: names.map(n => '「' + n + '」').join('') + rest[0] });
     }else{
-      arr.forEach(c => out.push(c.detail || codeTitle(k)));
+      arr.forEach(c => out.push({ code:k, text: c.detail || codeTitle(k) }));
     }
   });
   return out;
@@ -1771,10 +1787,19 @@ function refreshConfirmLook(){
   const rc = document.getElementById('reasonCard');
   const rt = document.getElementById('reasonTodo');
   if(rc && rt){
-    const cleared = n === 0;
-    rt.hidden = cleared;
-    rc.classList.toggle('red', !cleared);
-    rc.hidden = cleared && !document.getElementById('doneMore');
+    // **消すのは「赤枠で直せる行」だけ。**
+    // 撮った人・人数・スプリットは赤枠が無いので、片づいていない。
+    // 一緒に消すと「確定を押したらエラーだけ出る」ことになる
+    let left = 0;
+    rt.querySelectorAll('li[data-code]').forEach(li => {
+      li.hidden = (li.dataset.redBacked === '1') && n === 0;
+      if(!li.hidden) left++;
+    });
+    const cnt = document.getElementById('reasonCount');
+    if(cnt) cnt.textContent = left;
+    rt.hidden = left === 0;
+    rc.classList.toggle('red', left > 0);
+    rc.hidden = left === 0 && !document.getElementById('doneMore');
   }
 
   const btn = document.getElementById('confirm');
