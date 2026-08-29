@@ -631,6 +631,23 @@ function render(){
     );
   }
 
+  // --- 画像を読む枠が切れている ---
+  //
+  // **「取り込み中」と見分けが付かないのが問題だった。**
+  // 枠切れで止まっているのに働いているように見え、丸一日半気づけなかった
+  if(h.ingest_blocked){
+    parts.push(
+      '<div class="alert" style="cursor:default">' +
+        '<div style="text-align:left">' +
+          '<div class="dela" style="font-size:13.5px">画像を読む枠が切れています</div>' +
+          '<div style="font-size:10.5px;margin-top:4px;opacity:.85">' +
+          'Googleの無料枠を使い切りました。<b>' + esc(h.ingest_blocked) + '</b>待って、' +
+          '自動で続きから取り込みます。置き直す必要はありません。</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
   // --- スプリットの日程が仮のまま ---
   //
   // 新しいシーズンに入ると、サーバーが「2の次はシーズン+1のスプリット1」として

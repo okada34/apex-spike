@@ -1082,11 +1082,18 @@ function paintList(){
       <div class="bfoot"><span class="bs">${stamp}</span></div>
     </div>
 
-    ${c.not_imported ? `
+    ${c.quota_blocked_until ? `
+    <div class="card red" style="margin-top:14px">
+      <div class="dela" style="font-size:13.5px">画像を読む枠が切れています</div>
+      <div class="sub" style="margin-top:7px">Google の無料枠を使い切りました。
+        <b>${esc(c.quota_blocked_until)}</b>待って、自動で続きから取り込みます。
+        ${c.not_imported ? '待っているスクショ <b>' + c.not_imported + '枚</b>。' : ''}
+        <b>置き直す必要はありません。</b></div>
+    </div>` : (c.not_imported ? `
     <div class="card" style="margin-top:14px;padding:11px 15px;display:flex;align-items:center;gap:9px">
       <span style="width:7px;height:7px;border-radius:50%;background:var(--purple);flex:none"></span>
       <span class="sub" style="color:var(--ink2)">スクショ <span class="mono" style="font-size:12px;color:var(--ink)">${c.not_imported}枚</span> を取り込み中</span>
-    </div>` : '<div style="height:14px"></div>'}
+    </div>` : '<div style="height:14px"></div>')}
 
 
     <div id="secBad"></div>
