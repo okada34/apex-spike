@@ -1267,6 +1267,57 @@ function bind(){
     };
   });
 
+/**
+ * 書き込みのあと、**取り直さずに手元の控えを直す。**
+ *
+ * === なぜ（2026-08-29）===
+ *
+ * 以前は1操作ごとに `await load()` で設定を丸ごと取り直していた。
+ *   POST（約2秒） → 設定の再取得（2〜5秒） ＝ 1操作に4〜7秒
+ * 依頼者から「決定するたびに画面が変わらない」と言われた主な原因がこれ。
+ *
+ * 往復を1回に減らすと約2秒になる。
+ * **代償は「他の人が同時に直したぶんが、次に開くまで映らない」こと。**
+ * 4人で使うアプリなので、実害はないと判断した。
+ */
+const local = {
+  /** 名前を変える */
+  rename(personId, name){
+    const p = (S.data.persons || []).find(x => x.person_id === personId);
+    if(p) p.name = name;
+    if(S.target && S.target.person_id === personId) S.target.name = name;
+  },
+
+  /** 野良を人に紐づける。strangers から persons.accounts へ移す */
+  link(accountId, personId, kind){
+    const i = (S.data.strangers || []).findIndex(s => s.account_id === accountId);
+    if(i < 0) return;
+    const acc = S.data.strangers.splice(i, 1)[0];
+    acc.person_id = personId;
+    acc.kind = kind;
+    const p = (S.data.persons || []).find(x => x.person_id === personId);
+    if(p){ p.accounts = p.accounts || []; p.accounts.push(acc); }
+    S.data.account_count = (S.data.account_count || 0);
+  },
+
+  /** 紐づけを外す。persons.accounts から strangers へ戻す */
+  unlink(accountId){
+    (S.data.persons || []).forEach(p => {
+      const i = (p.accounts || []).findIndex(a => a.account_id === accountId);
+      if(i < 0) return;
+      const acc = p.accounts.splice(i, 1)[0];
+      acc.person_id = '';
+      acc.kind = 'stranger';
+      S.data.strangers = S.data.strangers || [];
+      S.data.strangers.push(acc);
+      S.data.strangers.sort((a, b) => (b.games || 0) - (a.games || 0));
+    });
+  },
+
+  /** スプリットの日程。**日程を動かすと所属が変わるので、ここだけは取り直す** */
+  splitChanged(){ return true; }
+};
+
   const sn = document.getElementById('saveName');
   if(sn) sn.onclick = async () => {
     const e = document.getElementById('p_name');
@@ -1275,8 +1326,10 @@ function bind(){
     if(!name){ toast('名前が空です', true); return; }
     try{
       await apiPost({ action:'rename_person', person_id:S.target.person_id, display_name:name });
+      // **取り直さない。**手元を直して描くだけ（往復2回→1回）
+      local.rename(S.target.person_id, name);
       toast('名前を直しました');
-      await load(); S.view = 'people'; render();
+      S.view = 'people'; render();
     }catch(err){ toast(err.message, true); }
   };
 
@@ -1292,8 +1345,9 @@ function bind(){
       if(!confirm(st.name + ' を ' + who.name + ' のサブアカにします。\n過去の ' + st.games + '戦 もまとめて数え直します。よろしいですか？')) return;
       try{
         const r = await apiPost({ action:'link_account', account_id:aid, person_id:pid, kind:'sub' });
+        local.link(aid, pid, 'sub');
         toast(who.name + ' に紐づけました（' + r.recounted_games + '戦を数え直し）');
-        await load(); S.view = 'people'; render();
+        S.view = 'people'; render();
       }catch(err){ toast(err.message, true); }
     };
   });
@@ -1308,8 +1362,9 @@ function bind(){
       try{
         // kind を stranger にすると、サーバー側が person_id も空に戻す
         const r = await apiPost({ action:'link_account', account_id:b.dataset.unlink, kind:'stranger' });
+        local.unlink(b.dataset.unlink);
         toast(nm + ' を野良に戻しました（' + r.recounted_games + '戦を数え直し）');
-        await load(); S.view = 'people'; render();
+        S.view = 'people'; render();
       }catch(err){ toast(err.message, true); }
     };
   });
@@ -1363,6 +1418,8 @@ function bind(){
         start_date:g.start_date, end_date:g.end_date,
         start_estimated:!!g.start_estimated, end_estimated:!!g.end_estimated });
       toast('決めました' + (r.moved_sessions ? '（' + r.moved_sessions + '日分を貼り直し）' : ''));
+      // **ここだけは取り直す。**日程を動かすとセッションの所属も変わり、
+      // 手元だけで正しく作り直せない
       await load(); S.view = 'splits'; render();
     }catch(err){ toast(err.message, true); }
   };
