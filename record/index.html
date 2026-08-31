@@ -2183,7 +2183,11 @@ function openLegendSheet(entryId, accountId, onPick, opt){
   document.body.appendChild(sheet);
 
   const close = () => sheet.remove();
-  sheet.querySelector('#lclose').onclick = close;
+  // **選ばずに閉じたことを、呼び出し元が知る必要がある。**
+  // 続けて選んでいる途中でやめたとき、後ろの一覧を描き直さないと
+  // それまでに選んだぶんが画面に出ない
+  const dismiss = () => { close(); if(opt.onClose) opt.onClose(); };
+  sheet.querySelector('#lclose').onclick = dismiss;
   // スクショを押したら拡大して見る。**選ぶ手を止めずに確認できるように**
   const pk = sheet.querySelector('#peekimg');
   const showShot = () => { if(pk && pk.getAttribute('src')) openShotZoom(pk.src, opt.focus); };
@@ -2203,7 +2207,7 @@ function openLegendSheet(entryId, accountId, onPick, opt){
   }
   // まだ届いていなければ取りに行く。届いたぶんは paintImage が入れてくれる
 
-  sheet.onclick = ev => { if(ev.target === sheet) close(); };
+  sheet.onclick = ev => { if(ev.target === sheet) dismiss(); };
   // 呼び出し元が受け取り方を決める。試合の詳細では即保存、まとめ選択では手元に貯める
   const pick = onPick || (id => setLegend(entryId, id));
   const done = id => { close(); pick(id); };
@@ -2631,6 +2635,97 @@ function bulkChanges(){
   return out;
 }
 
+/**
+ * まとめて直すときの枠を、上から順に並べた一覧。
+ * 試合の順 → 左・中央・右。**野良は入れない**（集計に使わないので選ばせない）
+ */
+function bulkSlotList(){
+  const out = [];
+  S.bulk.matches.forEach(m => m.entries.forEach(e => {
+    if(e.is_stranger) return;
+    out.push({ m: m, e: e });
+  }));
+  return out;
+}
+
+function bulkSlotIndex(entryId){
+  const list = bulkSlotList();
+  for(let i = 0; i < list.length; i++) if(list[i].e.entry_id === entryId) return i;
+  return 0;
+}
+
+/**
+ * 空いている枠を、上から順に続けて選ぶ。
+ *
+ * === なぜ要るか（2026-08-31）===
+ *
+ * **この画面だけ、1枠ずつ枠をタップし直す作りのままだった。**
+ * 試合の詳細にある「3人分まとめて選ぶ」(runTrioPick) は
+ * 左→中央→右と勝手に進むのに、**まとめて直す側に入っていなかった。**
+ *
+ * 6試合＝18枠を直すとき、
+ *   前  枠をタップ → キャラを選ぶ ... を18回 ＝ 36タップ
+ *   後  最初の枠をタップ → あとはキャラを選ぶだけ ＝ 19タップ
+ *
+ * 試合をまたいでも続く。スクショと拡大位置は枠ごとに差し替える。
+ * **すでに選んである枠は飛ばす。**選び直したいときは、その枠を直接タップする
+ */
+function runBulkChain(startAt){
+  const list = bulkSlotList();
+  const total = list.length;
+  if(!total) return;
+
+  const pos = c => c === 'center' ? '中央' : c === 'left' ? '左' : '右';
+  const trail = [];                       // 実際に見せた枠。「1つ戻る」で使う
+  let i = Math.max(0, Number(startAt) || 0);
+
+  // 空いている枠まで進んでから見せる
+  const step = () => {
+    while(i < total && S.draft[list[i].e.entry_id]) i++;
+    if(i >= total){ renderBulk(); return; }
+    present(i);
+  };
+
+  const present = n => {
+    const m = list[n].m, e = list[n].e;
+    const done = bulkCounts().done;
+    const who = e.person_name || e.raw_name || '';
+
+    // その試合の3枠を出す。**いまどの試合を見ているかが分かるように**
+    const cells = m.entries.map(x => ({
+      pos: pos(x.card_slot),
+      name: x.is_stranger ? '野良'
+          : (S.draft[x.entry_id] ? (legendName(S.draft[x.entry_id]) || '') : ''),
+      now: x.entry_id === e.entry_id
+    }));
+
+    openLegendSheet(e.entry_id, e.account_id, id => {
+      S.draft[e.entry_id] = id;
+      trail.push(n);
+      i = n + 1;
+      step();
+    }, {
+      head: m.seq + '戦目　' + pos(e.card_slot) + '　' + who,
+      step: (done + 1) + ' / ' + total,
+      rate: done / total,
+      clearLabel: 'この人は分からない',
+      shotId: m.image_ref || '',
+      focus: e.card_slot === 'left' ? 0 : e.card_slot === 'center' ? 1 : 2,
+      picked: cells,
+      onBack: trail.length ? () => {
+        const back = trail.pop();
+        delete S.draft[list[back].e.entry_id];
+        i = back;
+        present(back);
+      } : null,
+      // 途中でやめても、そこまで選んだぶんは一覧に出す
+      onClose: () => renderBulk()
+    });
+  };
+
+  step();
+}
+
 function renderBulk(){
   const legById = {}; (S.masters.legends || []).forEach(l => legById[l.legend_id] = l);
   const c = bulkCounts();
@@ -2680,6 +2775,11 @@ function renderBulk(){
        <span class="sub">上から順に、スクショを見ながら選びます</span>
        <span class="cnt">${c.done} / ${c.need}</span>
      </div>` +
+    (c.done < c.need
+      ? `<div style="padding:0 18px 12px">
+           <button class="btn" id="bulkChain">残り${c.need - c.done}枠を続けて選ぶ</button>
+         </div>`
+      : '') +
     body +
     `<div class="bbar">
        <button class="btn" id="bulkGo" ${ch.length === 0 ? 'disabled' : ''}>
@@ -2687,16 +2787,26 @@ function renderBulk(){
        </button>
      </div>`;
 
+  const bc = document.getElementById('bulkChain');
+  if(bc) bc.onclick = () => runBulkChain(0);
+
   app.querySelectorAll('[data-slot]').forEach(el => {
-    el.onclick = () => openLegendSheet(el.dataset.slot, el.dataset.acc, id => {
-      S.draft[el.dataset.slot] = id;
-      renderBulk();
-    }, {
-      // **ここでもスクショを見ながら選べるようにする。**
-      // 3人まとめて選ぶときは出るのに、まとめ修正では出ていなかった
-      shotId: el.dataset.shot,
-      focus: Number(el.dataset.focus)
-    });
+    el.onclick = () => {
+      const id = el.dataset.slot;
+      // **空いている枠を押したら、そこから下へ続けて選ぶ。**
+      // 枠を1つずつタップし直させない
+      if(!S.draft[id]){ runBulkChain(bulkSlotIndex(id)); return; }
+      // 埋まっている枠は「選び直し」。ここだけ開いて、選んだら閉じる
+      openLegendSheet(id, el.dataset.acc, pid => {
+        S.draft[id] = pid;
+        renderBulk();
+      }, {
+        // **ここでもスクショを見ながら選べるようにする。**
+        // 3人まとめて選ぶときは出るのに、まとめ修正では出ていなかった
+        shotId: el.dataset.shot,
+        focus: Number(el.dataset.focus)
+      });
+    };
   });
   app.querySelectorAll('[data-same]').forEach(b => {
     b.onclick = () => {
