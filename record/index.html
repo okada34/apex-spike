@@ -527,6 +527,90 @@ const store = {
 };
 
 
+
+/**
+ * === 確定するまでサーバへ送らない（2026-08-31）===
+ *
+ * 以前は **数字を1つ直すたび・レジェンドを1人選ぶたび**にPOSTしていた。
+ * 1回2〜7秒かかり、そのあいだ markSaving が画面全体を覆って
+ * **何も押せなくなる。**依頼者から
+ * 「ボタンを押すたびに長時間の通信で操作できなくなる」と言われた。
+ *
+ * しかも数字は、**押しただけで（決定ボタンも無しに）送っていた。**
+ * 打ち間違いをそのままサーバへ書いていたことになる。
+ *
+ * いまは端末の中に貯めて、**「この試合を確定する」の1回だけ**で送る。
+ *
+ * === 失わないための置き場 ===
+ *
+ * メモリだけに置くと、閉じたり再読み込みしたりで消える。
+ * localStorage に試合ごとに残し、開き直したら画面へ重ねる。
+ * **別の端末では見えない。**同じ人が続けて入力する前提
+ */
+const PEND_PREFIX = 'apexPend:';
+function pendEmpty(){ return { match:{}, entries:{} }; }
+
+function pendGet(mid){
+  try{
+    const p = JSON.parse(store.get(PEND_PREFIX + mid) || 'null');
+    if(!p || typeof p !== 'object') return pendEmpty();
+    return { match: p.match || {}, entries: p.entries || {} };
+  }catch(e){ return pendEmpty(); }
+}
+
+function pendCount(p){
+  if(!p) return 0;
+  let n = Object.keys(p.match || {}).length;
+  Object.keys(p.entries || {}).forEach(k => { n += Object.keys(p.entries[k] || {}).length; });
+  return n;
+}
+
+function pendPut(mid, p){
+  if(pendCount(p) === 0){ store.del(PEND_PREFIX + mid); return; }
+  store.set(PEND_PREFIX + mid, JSON.stringify(p));
+}
+
+function pendClear(mid){ store.del(PEND_PREFIX + mid); }
+
+/** 1項目を貯める。owner が 'match' なら試合側、それ以外は entry_id */
+function pendSet(mid, owner, field, value){
+  const p = pendGet(mid);
+  if(owner === 'match') p.match[field] = value;
+  else { p.entries[owner] = p.entries[owner] || {}; p.entries[owner][field] = value; }
+  pendPut(mid, p);
+  return p;
+}
+
+/**
+ * キル合計の辻褄を**手元で**数え直す。
+ * 以前はサーバの返事（recalculated）で受け取っていたが、
+ * 送らなくなったので自分で出す。計算は Pipeline.gs と同じ
+ */
+function recalcKillSumLocal(detail){
+  if(!detail || !detail.match) return;
+  const ks = (detail.entries || []).map(e => e.kills);
+  const known = ks.every(v => v !== null && v !== undefined && v !== '');
+  const total = detail.match.squad_total_kills;
+  const hasTotal = total !== null && total !== undefined && total !== '';
+  detail.match.kill_sum_ok =
+    known && hasTotal && ks.reduce((a, b) => a + Number(b), 0) === Number(total);
+}
+
+/** 取ってきた詳細に、貯めてある値を重ねる。開き直しても入力が残るように */
+function pendApply(detail){
+  if(!detail || !detail.match) return;
+  const p = pendGet(detail.match.match_id);
+  if(pendCount(p) === 0) return;
+  Object.keys(p.match).forEach(f => { detail.match[f] = p.match[f]; });
+  (detail.entries || []).forEach(e => {
+    const f = p.entries[e.entry_id];
+    if(!f) return;
+    Object.keys(f).forEach(k => { e[k] = f[k]; });
+    if(f.legend_id !== undefined) e.legend_source = 'manual';
+  });
+  recalcKillSumLocal(detail);
+}
+
 /**
  * 画面をまたいで結果を覚えておく置き場。
  * タブを切り替えるたびにGASを待つと毎回2〜3秒かかるので、前回の内容で先に描く。
@@ -1365,6 +1449,7 @@ async function openDetail(matchId){
   // 一度開いた試合は控えから即出す。GASは1往復2〜3秒かかるので、待たせない
   if(S.details[matchId]){
     S.detail = S.details[matchId];
+    pendApply(S.detail);
     renderDetail();
     prefetchNextDetail(matchId);
     return;
@@ -1374,6 +1459,8 @@ async function openDetail(matchId){
   try{
     S.detail = await apiGet({ action:'match_detail', match_id:matchId });
     S.details[matchId] = S.detail;
+    // **貯めてあった入力を重ねる。**閉じても打ち直させない
+    pendApply(S.detail);
   }catch(e){
     app.innerHTML = `<div class="card red" style="margin-top:8px">読み込めませんでした。<div class="sub" style="margin-top:6px">${esc(e.message)}</div></div>`;
     return;
@@ -1817,7 +1904,12 @@ function refreshConfirmLook(){
   const btn = document.getElementById('confirm');
   if(!btn) return;
   btn.classList.toggle('wait', n > 0);
-  btn.textContent = n > 0 ? ('残り' + n + 'か所を見てから確定') : 'この試合を確定する';
+  // **まだサーバへ送っていないことを、ボタンで伝える。**
+  // 黙って貯めると「もう保存された」と思わせてしまう
+  const pn = (S.detail && S.detail.match) ? pendCount(pendGet(S.detail.match.match_id)) : 0;
+  btn.textContent = n > 0 ? ('残り' + n + 'か所を見てから確定')
+                  : pn > 0 ? ('直した' + pn + '件を保存して確定')
+                  : 'この試合を確定する';
   const nr = document.getElementById('nextRed');
   if(nr) nr.style.display = n > 0 ? '' : 'none';
 }
@@ -1875,31 +1967,21 @@ function bindNumberInput(input){
     recomputeFieldRed(input);
   };
 
+  // **送らない。**手元に貯めて、確定のときにまとめて書く
   input.onchange = () => {
     const owner = input.dataset.owner;
     const field = input.dataset.field;
     const value = input.value === '' ? '' : Number(input.value);
-    const body = owner === 'match'
-      ? { action:'update_match', match_id:S.detail.match.match_id, fields:{ [field]: value } }
-      : { action:'update_entry', entry_id:owner, fields:{ [field]: value } };
 
-    // 手元の値も更新しておく。取り直すと2〜3秒止まるので、返ってきた再計算値だけ当てる
     if(owner === 'match') S.detail.match[field] = value;
     else {
       const e = (S.detail.entries || []).filter(function(x){ return x.entry_id === owner; })[0];
       if(e) e[field] = value;
     }
-
-    apiPost(body).then(r => {
-      if(!r.ok){ throw new Error(r.error || '保存できませんでした'); }
-      input.dataset.original = input.value;
-      if(r.recalculated){
-        S.detail.match.kill_sum_ok = r.recalculated.kill_sum_ok;
-        S.detail.match.squad_survival_sec = r.recalculated.squad_survival_sec;
-      }
-    }).catch(err => {
-      toast('保存できませんでした：' + err.message, true, () => input.onchange());
-    });
+    pendSet(S.detail.match.match_id, owner, field, value);
+    recalcKillSumLocal(S.detail);
+    input.dataset.original = input.value;
+    refreshConfirmLook();
   };
 }
 
@@ -2023,17 +2105,17 @@ function saveTrio(list, picked){
   if(!items.length){ toast('変わったところはありません'); return; }
   if(!S.key){ toast('編集キーが要ります', true); return; }
 
-  apiPost({ action:'bulk_update_legends', items: items })
-    .then(r => {
-      toast(items.length + '人分登録しました');
-      // 手元の控えも合わせてから描き直す
-      const d = S.detail;   // S.detail は詳細データ本体
-      if(d) d.entries.forEach(e => {
-        if(picked[e.entry_id] !== undefined) { e.legend_id = picked[e.entry_id]; e.legend_source = 'manual'; }
-      });
-      renderDetail();
-    })
-    .catch(err => toast('保存できませんでした：' + err.message, true));
+  // **送らない。**3人ぶんを手元に貯めて、確定のときにまとめて書く。
+  // 以前はここで5〜7秒かかり、そのあいだ画面が操作できなかった
+  const mid = S.detail.match.match_id;
+  const d = S.detail;
+  items.forEach(it => {
+    pendSet(mid, it.entry_id, 'legend_id', it.legend_id);
+    const e = (d.entries || []).filter(function(x){ return x.entry_id === it.entry_id; })[0];
+    if(e){ e.legend_id = it.legend_id; e.legend_source = 'manual'; }
+  });
+  toast(items.length + '人分を入れました（確定で保存されます）');
+  renderDetail();
 }
 
 
@@ -2220,21 +2302,13 @@ function openLegendSheet(entryId, accountId, onPick, opt){
 function setLegend(entryId, legendId){
   const entry = (S.detail.entries || []).filter(function(e){ return e.entry_id === entryId; })[0];
   if(!entry) return;
-  const before = entry.legend_id;
 
-  // 先に画面へ反映する。GASの返事を待つと1回あたり4〜5秒かかり、選ぶ作業にならない
+  // **送らない。**確定のときにまとめて書く。
+  // 通信が無いので、選んだ瞬間に画面が変わる
   entry.legend_id = legendId;
+  entry.legend_source = 'manual';
+  pendSet(S.detail.match.match_id, entryId, 'legend_id', legendId);
   renderDetail();
-
-  apiPost({ action:'update_entry', entry_id:entryId, fields:{ legend_id:legendId } })
-    .then(r => {
-      if(!r.ok) throw new Error(r.error || '保存できませんでした');
-    })
-    .catch(err => {
-      entry.legend_id = before;   // 送れなかったので画面も戻す
-      renderDetail();
-      toast('保存できませんでした：' + err.message, true, () => setLegend(entryId, legendId));
-    });
 }
 
 // ===================================================================
@@ -2359,10 +2433,17 @@ function giveUpFailed(btn){
     });
 }
 
+/** 確定の要求に、貯めてある変更を載せる。**書き込みはこの1回だけ** */
+function withPending(body){
+  const p = pendGet(S.detail.match.match_id);
+  if(pendCount(p) > 0) body.pending = p;
+  return body;
+}
+
 function confirmMatch(){
   const btn = document.getElementById('confirm');
   btn.disabled = true;
-  apiPost({ action:'confirm_match', match_id:S.detail.match.match_id })
+  apiPost(withPending({ action:'confirm_match', match_id:S.detail.match.match_id }))
     .then(r => {
       btn.disabled = false;
       if(!r.ok){
@@ -2388,6 +2469,7 @@ function afterConfirmed(r){
   store.del(LS.last);
   // 取り直すと1.4秒止まる。確定したことは分かっているので手元で反映する
   const mid = S.detail.match.match_id;
+  pendClear(mid);   // 書けたので、貯めてあったぶんは捨てる
   if(S.list){
     S.list.matches = (S.list.matches || []).filter(m => m.match_id !== mid);
     if(S.list.counts){
@@ -2469,7 +2551,7 @@ function openUnresolvedSheet(blocking){
     const note = sheet.querySelector('#unote').value.trim();
     if(!note){ toast('理由を書いてください', true); return; }
     go.disabled = true; go.textContent = '送っています…';
-    apiPost({ action:'confirm_match_override', match_id:S.detail.match.match_id, review_note:note })
+    apiPost(withPending({ action:'confirm_match_override', match_id:S.detail.match.match_id, review_note:note }))
       .then(r => {
         if(!r.ok) throw new Error(r.error || '確定できませんでした');
         close();
@@ -2516,6 +2598,8 @@ function openExcludeSheet(){
     apiPost({ action:'exclude_match', match_id:S.detail.match.match_id, reason })
       .then(r => {
         if(!r.ok) throw new Error(r.error);
+        // 集計から外したので、貯めてあった変更も捨てる
+        pendClear(S.detail.match.match_id);
         close(); toast('外しました'); store.del(LS.last); renderList();
       })
       .catch(err => toast('外せませんでした：' + err.message, true));
