@@ -1682,7 +1682,7 @@ function isTodoCode(c){ return DONE_CODES.indexOf(String(c && c.code)) < 0; }
  * MISSING_REQUIRED_VALUE は入れない。空欄が必ず赤枠になるとは限らない
  * （キルの空欄は、合計が合っていれば赤くならない）
  */
-var RED_BACKED_CODES = ['KILL_SUM_MISMATCH', 'LOW_CONFIDENCE'];
+var RED_BACKED_CODES = ['KILL_SUM_MISMATCH', 'LOW_CONFIDENCE', 'SQUAD_TOTALS_UNREADABLE'];
 
 function mergeCodeLines(list){
   const byCode = {};
