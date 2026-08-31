@@ -1108,11 +1108,14 @@ function paintList(){
     ${c.failed_in_queue ? `
     <div class="card" style="margin-top:14px;border-left:4px solid var(--ink4)">
       <div class="spread"><span class="sub" style="color:var(--ink2)">読めなかった画像 ${c.failed_in_queue}件</span></div>
-      <div class="sub" style="margin-top:8px">リザルト以外のタブなど、読み取れなかった画像です。<b>試合にはなっていません。</b></div>
-      <div class="sub" style="margin-top:8px">撮り直せないものは諦めてください。溜めたままだと、次に本当の失敗が起きても気づけません。</div>
+      <div class="sub" style="margin-top:8px">読み取れなかった画像です。<b>試合にはなっていません。</b></div>
+      <div class="sub" style="margin-top:8px"><b>まず「どの画像か見る」で理由を見てください。</b>
+        混雑・枠切れ・モデルの入れ替えで落ちたものは、もう一度読ませれば入ります。
+        リザルト以外のタブを撮ったものは、何度読ませても入りません。諦めてください。</div>
       <button class="btn ghost" id="seeFailed" style="margin-top:12px">どの画像か見る</button>
       <div id="failedBox"></div>
-      <button class="btn ghost" id="giveUp" style="margin-top:10px">${c.failed_in_queue}件とも諦める</button>
+      <button class="btn ghost" id="retryFailed" style="margin-top:10px">${c.failed_in_queue}件をもう一度読ませる</button>
+      <button class="btn ghost" id="giveUp" style="margin-top:8px">${c.failed_in_queue}件とも諦める</button>
     </div>` : ''}
   `;
 
@@ -1156,6 +1159,8 @@ function paintList(){
   const gu = document.getElementById('giveUp');
   const sf = document.getElementById('seeFailed');
   if(sf) sf.onclick = () => showFailed(sf);
+  const rf = document.getElementById('retryFailed');
+  if(rf) rf.onclick = () => retryFailed(rf);
   if(gu) gu.onclick = () => giveUpFailed(gu);
 
   // 途中で閉じていたら、その試合から再開できるようにする
@@ -2278,6 +2283,48 @@ function showFailed(btn){
     });
 }
 
+
+/**
+ * 読めなかった画像を、もう一度読ませる。
+ *
+ * === なぜ要るか（2026-08-31）===
+ *
+ * ここの出口は長いあいだ**「諦める」しか無かった。**
+ * 作ったときは、失敗の原因が「リザルト以外のタブを撮った」だけだと思っていたため。
+ *
+ * 実際には、**画像は正しいのに落ちる失敗が3種類**あった。
+ *   モデル名が古くて404 / 無料枠切れ429 / 混雑503
+ * どれもやり直せば入るのに、**正しい画像を捨てるしか選べなかった。**
+ *
+ * 確認は出さない。やり直しは取り返しがつくうえ、
+ * 「決定するたびに待たされる」のがいちばん嫌われているため。
+ */
+function retryFailed(btn){
+  if(!S.key){ toast('編集キーが要ります', true); return; }
+  const before = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '送っています…';
+  apiPost({ action:'retry_failed_ingest' })
+    .then(r => {
+      if(!r.ok) throw new Error(r.error || 'やり直せませんでした');
+      // **取り直さない。**手元の数を動かして描くだけ（往復2回→1回）
+      if(S.list && S.list.counts){
+        const c = S.list.counts;
+        c.not_imported = (c.not_imported || 0) + (r.requeued || 0);
+        c.failed_in_queue = 0;
+        if(r.blocked_until) c.quota_blocked_until = r.blocked_until;
+        cacheSet('review_list', S.list);
+      }
+      toast(r.blocked_until
+        ? r.requeued + '件を待ちに戻しました。ただし画像を読む枠が切れています（' + r.blocked_until + '休みます）'
+        : r.requeued + '件を待ちに戻しました。5分以内に読み直します');
+      paintList();
+    })
+    .catch(err => {
+      btn.disabled = false; btn.textContent = before;
+      toast('やり直せませんでした：' + err.message, true);
+    });
+}
 
 function giveUpFailed(btn){
   if(!S.key){ toast('編集キーが要ります', true); return; }
