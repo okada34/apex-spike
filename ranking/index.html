@@ -151,8 +151,21 @@
 
   /* ---- 構成 ---- */
   .compo{ margin:0 18px 10px; background:var(--card); border-radius:18px; padding:15px; }
-  .compo .ct{ font-size:11.5px; color:var(--ink2); }
-  .compo .cv{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:26px; letter-spacing:-.04em; margin-top:2px; }
+  /* ★ 2026-09-06 — **見出しがカードの中でいちばん小さかった。**
+       11.5px の薄い灰色で、数字（26px）にも人名（12.5px）にも負けていた。
+       「2.4位」とだけ見えて、それが何の順位なのかが読み取れない。
+
+         > 各カードの見出しをもっと目立つようにして。何の順位や回数は分かりづらい。
+
+       → 見出しフォント・本文と同じ濃さにして、いちばん先に目に入るようにする。
+         文言は変えない（もともと過不足なく書けている）。**大きさの問題だった。**
+       ★ 長い見出しは折り返す。`min-width:0` が無いと flex の中で縮まない */
+  .compo .ct{
+    font-family:'Dela Gothic One',sans-serif; font-size:13.5px; color:var(--ink);
+    line-height:1.45; flex:1; min-width:0;
+  }
+  .compo .ct .tie{ font-family:'RocknRoll One',sans-serif; font-size:11px; }
+  .compo .cv{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:26px; letter-spacing:-.04em; margin-top:7px; }
   .compo .cv small{ font-family:'RocknRoll One',sans-serif; font-size:11.5px; color:var(--ink3); margin-left:4px; font-weight:400; letter-spacing:0; }
   .mem{ display:flex; align-items:center; gap:9px; padding:7px 0 0; }
   .mem .lg{ font-size:12.5px; }
@@ -161,7 +174,21 @@
   .compo .cg span{ font-size:10.5px; color:var(--ink3); }
   .cother{ font-size:10.5px; color:var(--ink3); margin-top:7px; padding-top:7px; border-top:1px dashed var(--line); }
 
-  .cbadge{ font-size:10px; background:var(--lime); color:var(--invert); padding:2px 8px; border-radius:20px; }
+  /* ---- 構成の全順位 ----
+       ★ 2026-09-06 — **1行に押し込むと、キャラ名3つが「ヴァ / ルキリー」と割れる。**
+         名前で1段、数字で1段に分ける。名前は折り返してよいが、途中で切らない */
+  .crow{ display:flex; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); }
+  .crow:last-child{ border-bottom:0; }
+  .crow .crk{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:13px; color:var(--ink3); min-width:18px; padding-top:2px; }
+  .crow .cbody{ flex:1; min-width:0; }
+  .crow .cnm{ font-size:12.5px; line-height:1.6; }
+  .crow .cmeta{ display:flex; align-items:baseline; gap:10px; margin-top:5px; }
+  .crow .cvv{ font-family:'Roboto Mono',monospace; font-weight:700; font-size:15px; letter-spacing:-.04em; }
+  .crow .cvv i{ font-family:'RocknRoll One',sans-serif; font-style:normal; font-size:10px; color:var(--ink3); margin-left:2px; }
+  .crow .cgm{ font-family:'Roboto Mono',monospace; font-size:10.5px; color:var(--ink4); margin-left:auto; }
+
+  .cbadge{ font-size:10px; background:var(--lime); color:var(--invert); padding:2px 8px; border-radius:20px;
+           flex:none; white-space:nowrap; margin-top:3px; }
 
   .card{ background:var(--card); border-radius:18px; padding:15px; margin:0 18px 10px; }
   .sec{ font-family:'Dela Gothic One',sans-serif; font-size:15px; margin:22px 18px 10px; }
@@ -522,7 +549,8 @@ const S = {
   periodValue: '',
   axis: 'person',
   pending: 0,            // 登録タブのバッジ用
-  compoPick: []          // 構成の絞り込みで選んだレジェンド（2体まで）
+  compoPick: [],         // 構成の絞り込みで選んだレジェンド（2体まで）
+  compoDetail: null      // 全順位を開いている部門のid（null なら一覧）
 };
 
 const app = document.getElementById('app');
@@ -662,7 +690,7 @@ function renderSeg(){
     '<button data-v="compo" class="' + (S.view === 'compo' ? 'on' : '') + '">' + ic(C, S.view === 'compo') + '構成</button>' +
   '</div>';
   segEl.querySelectorAll('button').forEach(b => {
-    b.onclick = () => { S.view = b.dataset.v; render(); window.scrollTo({ top: 0 }); };
+    b.onclick = () => { S.view = b.dataset.v; S.compoDetail = null; render(); window.scrollTo({ top: 0 }); };
   });
 }
 
@@ -835,6 +863,70 @@ function renderAwards(){
 // ===================================================================
 // 構成
 // ===================================================================
+/**
+ * 1つの部門の全順位。
+ *
+ * === なぜ要るか（2026-09-06・依頼者の指定）===
+ *
+ *   > 「平均順位がいちばん良い」をタップしたら、
+ *   > 今までの5戦以上やった構成の平均順位一覧が見れる、みたいな。
+ *
+ * 上のカードは**各部門の1位しか出していない。**
+ * 2位以下がどうなのか、自分がよく使う構成が何番目なのかが見えなかった。
+ *
+ * ★ **サーバーに聞き直さない。**`compo_list` に全構成の全指標が
+ *   もともと入っている。並べ替えるだけで出せる。
+ * ★ 並べ方（field / dir）は**サーバーが渡してくる。**
+ *   画面側に書き写すと、部門を足したときに片方だけ直してずれる
+ */
+function renderCompoDetail(){
+  const d = S.data;
+  const dept = (d.compos || []).find(c => c.id === S.compoDetail);
+  if(!dept) { S.compoDetail = null; return renderCompo(); }
+
+  const rows = (d.compo_list || []).slice().filter(g => {
+    const v = g[dept.field];
+    return v !== null && v !== undefined;
+  });
+  // dir が -1 なら小さいほうが上（平均順位）
+  rows.sort((a, b) => (a[dept.field] - b[dept.field]) * (dept.dir < 0 ? 1 : -1));
+
+  const fmtV = v => (dept.id === 'survival') ? fmtSec(v) : fmt(v, dept.digits, '');
+  const unit = (dept.id === 'survival') ? '' : (dept.unit || '');
+
+  // 同じ値は同じ順位にする。**1つ違いで順位が飛ぶと「僅差」が伝わらない**
+  let rank = 0, prev = null;
+  const list = rows.map((g, i) => {
+    if(prev === null || g[dept.field] !== prev){ rank = i + 1; prev = g[dept.field]; }
+    const names = (g.members || []).map(m => esc(m.legend_name)).join(' / ');
+    return '<div class="crow">' +
+      '<span class="crk">' + rank + '</span>' +
+      '<div class="cbody">' +
+        '<div class="cnm">' + names + '</div>' +
+        '<div class="cmeta">' +
+          '<span class="cvv">' + fmtV(g[dept.field]) +
+            (unit ? '<i>' + esc(unit) + '</i>' : '') + '</span>' +
+          '<span class="cgm">' + g.games + '戦</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  const body = rows.length
+    ? '<div class="card" style="margin-top:12px">' + list + '</div>'
+    : '<div class="card" style="margin-top:12px"><div class="sub">' +
+      '出せる構成がまだありません。同じ3体で <span class="mono" style="color:var(--ink2)">' +
+      d.compo_min_games + '戦</span> たまると出ます。</div></div>';
+
+  return '<div class="sec" style="margin-top:4px">' + esc(dept.title) + '</div>' +
+    '<div class="card"><div class="sub">' +
+      '<span class="mono" style="color:var(--ink2)">' + d.compo_min_games + '戦以上</span>の構成を、' +
+      (dept.dir < 0 ? '良い順' : '多い順') + 'に並べています。' +
+      (dept.note ? '<br>' + esc(dept.note) : '') + '</div></div>' +
+    body +
+    '<button class="btn" id="backToCompo">構成に戻る</button><div style="height:24px"></div>';
+}
+
 function renderCompo(){
   const d = S.data;
   const cs = (d.compos || []).filter(c => c.value !== null && c.value !== undefined);
@@ -863,17 +955,17 @@ function renderCompo(){
       '<div class="cother">同点 ' +
         (o.members || []).map(m => esc(m.legend_name)).join(' / ') +
         ' <span class="mono" style="font-size:10.5px">' + o.games + '戦</span></div>').join('');
-    return '<div class="compo">' +
-      '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">' +
+    // ★ 2026-09-06 — **カードごと押せる。**押すとその部門の全順位が開く
+    return '<div class="compo" data-compo="' + esc(c.id) + '" style="cursor:pointer">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">' +
         '<div class="ct">' + esc(c.title) +
-          (c.tied ? '<span style="color:var(--yellow);margin-left:6px">同点</span>' : '') + '</div>' +
+          (c.tied ? '<span class="tie" style="color:var(--yellow);margin-left:6px">同点</span>' : '') + '</div>' +
         (c.badge ? '<span class="cbadge">' + esc(c.badge) + '</span>' : '') +
       '</div>' +
       '<div class="cv">' + val + unit + '</div>' +
       mem + others +
-      (c.id === 'games' && !c.note ? '' :
-        '<div class="cg"><span>' + (c.note ? esc(c.note) : '') + '</span>' +
-        '<span class="mono" style="font-size:11.5px;color:var(--ink2)">' + c.games + '戦</span></div>') +
+      '<div class="cg"><span>' + (c.note ? esc(c.note) : '全順位を見る ›') + '</span>' +
+        '<span class="mono" style="font-size:11.5px;color:var(--ink2)">' + c.games + '戦</span></div>' +
     '</div>';
   }).join('');
 
@@ -1249,7 +1341,7 @@ function render(){
   renderSeg();
 
   if(S.view === 'awards')      app.innerHTML = renderAwards();
-  else if(S.view === 'compo')  app.innerHTML = renderCompo();
+  else if(S.view === 'compo')  app.innerHTML = S.compoDetail ? renderCompoDetail() : renderCompo();
   else                         app.innerHTML = renderPerson();
 
   bindChips();
@@ -1272,6 +1364,13 @@ function render(){
   if(ta) ta.onclick = () => { S.view = 'awards'; render(); window.scrollTo({ top: 0 }); };
   const bk = document.getElementById('backToRank');
   if(bk) bk.onclick = () => { S.view = 'person'; render(); window.scrollTo({ top: 0 }); };
+
+  // 構成カード → その部門の全順位
+  app.querySelectorAll('[data-compo]').forEach(el => {
+    el.onclick = () => { S.compoDetail = el.dataset.compo; render(); window.scrollTo({ top: 0 }); };
+  });
+  const bc = document.getElementById('backToCompo');
+  if(bc) bc.onclick = () => { S.compoDetail = null; render(); window.scrollTo({ top: 0 }); };
   app.querySelectorAll('[data-month]').forEach(b => {
     b.onclick = () => { S.periodKind = 'month'; S.periodValue = b.dataset.month; load(); };
   });

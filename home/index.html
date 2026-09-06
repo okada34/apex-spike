@@ -467,6 +467,57 @@ function apiGet(params){
 }
 
 
+/**
+ * 書き込みを送る。**ホームで使うのはこれ1つだけ**（いま取り込む）。
+ *
+ * ホームは無認証でも見られる画面なので、鍵を持っていない端末もある。
+ * 呼ぶ前に必ず鍵の有無を確かめること。
+ */
+function apiPost(body){
+  const payload = Object.assign({}, body, {
+    edit_key: store.get(LS.key) || '',
+    actor_person_id: store.get(LS.person) || ''
+  });
+  return fetch(S.url, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    })
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+}
+
+/**
+ * ドライブのスクショを、いま読みに行かせる。
+ *
+ * ★ **その場では読まない。**1枚に約50秒かかる。
+ *   サーバーは「数秒後に走らせる」予約だけしてすぐ返す。
+ *
+ * ★ 鍵が無い端末では、登録タブへ送る。
+ *   そこで鍵を入れてもらえば押せるようになる
+ */
+function startIngestFromHome(el){
+  if(!store.get(LS.key)){
+    location.href = '../record/';
+    return;
+  }
+  const tx = el.querySelector('.dela');
+  const before = tx ? tx.textContent : '';
+  if(tx) tx.textContent = '送っています…';
+  el.style.pointerEvents = 'none';
+  apiPost({ action:'run_ingest_now' })
+    .then(r => {
+      if(!r.ok) throw new Error(r.error || '始められませんでした');
+      if(tx) tx.textContent = '読み込みを始めました';
+      const sub = el.querySelector('div div:last-child');
+      if(sub) sub.textContent = '読み終わるまで数分かかります。あとでこの画面を開き直すと減っています。';
+    })
+    .catch(err => {
+      if(tx) tx.textContent = before;
+      el.style.pointerEvents = '';
+      alert('始められませんでした：' + err.message);
+    });
+}
+
 function apiGetOnce(params){
   const p = Object.assign({}, params);
   const k = store.get(LS.key) || '';
@@ -627,6 +678,28 @@ function render(){
   // 以前は設定画面にしか出していなかったので、
   // **ホームしか見ない人には永久に届かない。**
   // 詳細は出さない（この画面は鍵無しで見られる）。宛先だけ示す
+  // --- 読み込んでいないスクショがある ---
+  //
+  // === なぜ真っ先に出すか（2026-09-06）===
+  //
+  // 定期トリガーをやめたので、**ドライブに置いただけでは誰も読みに行かない。**
+  // 押し忘れると黙って溜まる。
+  //
+  // ★ ほかの警告と違い、**これは押せばその場で片づく。**
+  //   だから並びのいちばん上に置き、カードごと押せるようにする
+  if(h.ingest_pending > 0 && !h.ingest_blocked){
+    parts.push(
+      '<div class="alert" id="ingestAlert" style="cursor:pointer">' +
+        '<div style="text-align:left">' +
+          '<div class="dela" style="font-size:13.5px">' +
+            '読み込んでいないスクショが ' + h.ingest_pending + '枚 あります</div>' +
+          '<div style="font-size:10.5px;margin-top:4px;opacity:.85">' +
+          'ここを押すと読み込みを始めます。1枚に50秒ほどかかります。</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
   if(h.health_warn){
     parts.push(
       '<div class="alert" style="cursor:default">' +
@@ -813,6 +886,10 @@ function noneDesc(id){
 }
 
 function bind(){
+  // 未取り込みの知らせ。**カードごと押せる**
+  const ia = document.getElementById('ingestAlert');
+  if(ia) ia.onclick = () => startIngestFromHome(ia);
+
   const ta = document.getElementById('toAwards');
   if(ta) ta.onclick = () => { location.href = '../ranking/?view=awards'; };
 

@@ -1182,11 +1182,20 @@ function paintList(){
         <b>${esc(c.quota_blocked_until)}</b>待って、自動で続きから取り込みます。
         ${c.not_imported ? '待っているスクショ <b>' + c.not_imported + '枚</b>。' : ''}
         <b>置き直す必要はありません。</b></div>
-    </div>` : (c.not_imported ? `
-    <div class="card" style="margin-top:14px;padding:11px 15px;display:flex;align-items:center;gap:9px">
-      <span style="width:7px;height:7px;border-radius:50%;background:var(--purple);flex:none"></span>
-      <span class="sub" style="color:var(--ink2)">スクショ <span class="mono" style="font-size:12px;color:var(--ink)">${c.not_imported}枚</span> を取り込み中</span>
-    </div>` : '<div style="height:14px"></div>')}
+    </div>` : `
+    <!-- === 「いま取り込む」（2026-09-06）===
+         定期トリガーをやめたので、**押さないと読みに行かない。**
+         だから取り込み中でなくても、この箱は必ず出す。
+         隠すと「どこから取り込むのか」が分からなくなる -->
+    <div class="card" style="margin-top:14px">
+      ${c.not_imported ? `
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--purple);flex:none"></span>
+        <span class="sub" style="color:var(--ink2)">スクショ <span class="mono" style="font-size:12px;color:var(--ink)">${c.not_imported}枚</span> を取り込み中</span>
+      </div>` : `
+      <div class="sub" style="color:var(--ink2)">ドライブに置いたスクショを読み込みます。</div>`}
+      <button class="btn ghost" id="ingestNow" style="margin-top:10px">いま取り込む</button>
+    </div>`}
 
 
     <div id="secBad"></div>
@@ -1250,6 +1259,9 @@ function paintList(){
   (bulkHost || app).appendChild(bulkBtn);
 
   const gu = document.getElementById('giveUp');
+  const inw = document.getElementById('ingestNow');
+  if(inw) inw.onclick = () => ingestNow(inw);
+
   const sf = document.getElementById('seeFailed');
   if(sf) sf.onclick = () => showFailed(sf);
   const rf = document.getElementById('retryFailed');
@@ -2386,6 +2398,43 @@ function showFailed(btn){
  * 確認は出さない。やり直しは取り返しがつくうえ、
  * 「決定するたびに待たされる」のがいちばん嫌われているため。
  */
+/**
+ * ドライブのスクショを、いま読みに行かせる。
+ *
+ * === なぜボタンが要るか（2026-09-06）===
+ *
+ * 15分おきの定期トリガーをやめた。
+ * **遊んでいない日も動き続けて、Googleの無料枠（1日90分）を
+ * 何も無いのに1日10分ずつ食っていた**ため。
+ *
+ * やめた代わりに、**押したときだけ動く。**
+ *
+ * ★ **その場では読まない。**1枚に約50秒かかるので、
+ *   ここで待つと画面が1分近く固まる。
+ *   サーバー側は「数秒後に走らせる」予約だけしてすぐ返す。
+ *   読み終わった枚数は、この画面を開き直せば分かる。
+ */
+function ingestNow(btn){
+  if(!S.key){ toast('編集キーが要ります', true); return; }
+  const before = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '送っています…';
+  apiPost({ action:'run_ingest_now' })
+    .then(r => {
+      if(!r.ok) throw new Error(r.error || '始められませんでした');
+      btn.textContent = '取り込みを始めました';
+      toast(r.blocked_until
+        ? '画像を読む枠が切れています（' + r.blocked_until + '休みます）'
+        : '数秒後に読み始めます。1枚に50秒ほどかかります');
+      // **押しっぱなしに見せない。**少ししたら押せる形に戻す
+      setTimeout(() => { btn.disabled = false; btn.textContent = before; }, 4000);
+    })
+    .catch(err => {
+      btn.disabled = false; btn.textContent = before;
+      toast('始められませんでした：' + err.message, true);
+    });
+}
+
 function retryFailed(btn){
   if(!S.key){ toast('編集キーが要ります', true); return; }
   const before = btn.textContent;
