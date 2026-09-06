@@ -333,7 +333,6 @@ const store = {
  */
 // 版を上げると、古い形の控えを丸ごと無視できる。中身の作りを変えたときに使う
 const CACHE_PREFIX = 'apexCache:v2:';
-const CACHE_STALE_MS = 20 * 60 * 1000;        // これを超えたら「古いかも」と伝える
 const CACHE_MAX_MS   = 24 * 60 * 60 * 1000;   // これを超えたら、そもそも使わない
 
 /** いま画面に出している控えの鍵。鮮度の表示に使う */
@@ -381,10 +380,21 @@ function cacheSet(key, data){
 /**
  * 「いつの数字か」の帯。
  *
- * 出すのは**困っているときだけ**にする。
- *   - 取り直せなかった（電波が無い・サーバーが落ちている）
- *   - 控えが20分より古い
+ * 出すのは**つながっていないときだけ。**
  * うまくいっているときは何も出さない。常時出すと、ただの飾りになって読まれなくなる。
+ *
+ * === 「古いかも」をやめた（2026-09-06・依頼者の指定）===
+ *
+ *   > 放っておいてもデータ更新されるし、警告表示されてもこちらに出来ることが無いのに
+ *   > 毎回表示されると、アプリを開くのが嫌になってしまいます。
+ *
+ * **そのとおりだった。**この画面は先に控えを描いてから取り直しに行く作りなので、
+ * 1日ぶり（＝20分より古い）に開けば**必ず**帯が出る。
+ * しかも数秒後には新しい数字が届いて、勝手に消える。
+ * **利用者にできることが何も無い警告を、開くたびに見せていた。**
+ *
+ * つながっていないときの帯は残す。そちらは
+ * 「なぜ数字が変わらないのか」の答えになっていて、消すと理由が分からなくなる。
  */
 /**
  * 控えを見せている間、**裏で最新を取りに行っていること**を出す。
@@ -410,8 +420,7 @@ function showChecking(on){
 
 function updateFreshBar(){
   const age = SHOWN_KEY ? cacheAge(SHOWN_KEY) : null;
-  const old = age !== null && age > CACHE_STALE_MS;
-  if(NET_OK && !old){ removeFreshBar(); return; }
+  if(NET_OK){ removeFreshBar(); return; }
 
   let el = document.getElementById('freshbar');
   if(!el){
@@ -423,7 +432,7 @@ function updateFreshBar(){
       'background:#3A2A1A;color:#FFE646;border-bottom:1px solid #6B4E1E';
     document.body.appendChild(el);
   }
-  el.textContent = (NET_OK ? '⚠ 古い数字かもしれません' : '⚠ つながっていません') +
+  el.textContent = '⚠ つながっていません' +
     '（最終更新 ' + fmtAgo(age) + '）';
   // 帯のぶんだけ本文を下げる。上に重ねるとヘッダーが隠れて操作できなくなる
   document.body.style.paddingTop = el.offsetHeight + 'px';
