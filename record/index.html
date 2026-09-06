@@ -2395,7 +2395,7 @@ function retryFailed(btn){
       }
       toast(r.blocked_until
         ? r.requeued + '件を待ちに戻しました。ただし画像を読む枠が切れています（' + r.blocked_until + '休みます）'
-        : r.requeued + '件を待ちに戻しました。5分以内に読み直します');
+        : r.requeued + '件を待ちに戻しました。次の取り込み（15分おき）で読み直します');
       paintList();
     })
     .catch(err => {

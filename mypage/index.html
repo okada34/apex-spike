@@ -590,7 +590,7 @@ function legendCard(l, withRank){
   const clsJa = CLASS_JA[l.cls] || '';
 
   // 何戦分の平均かだけでは、どこまで信じてよいか分からない。
-  // 段の名前（暫定／参考値／傾向アリ／クセ判明）を数字のすぐ隣に置く
+  // 段の名前（白帯／茶帯／黒帯／赤帯）を数字のすぐ隣に置く
   const t = (S.data.tiers || [])[l.tier_index];
   const tierChip = t
     ? '<span style="margin-left:7px;color:' + (TIER_COLORS[l.tier_index] || 'var(--ink4)') + '">'
@@ -727,7 +727,7 @@ function renderMain(){
   // データランクの入口。いちばん出しているレジェンドで言う
   const t0 = top3[0];
   const rankEntry = t0
-    ? '<button class="btn hl" id="toRank">この数字、どれくらい信じていい？</button>' +
+    ? '<button class="btn hl" id="toRank">キャラ熟練度を見る</button>' +
       '<div class="sub" style="margin:9px 18px 0">' + esc(t0.name) + 'は <span class="mono" style="color:var(--ink2)">' +
       t0.games + '戦</span>。' +
       (t0.to_next === null ? 'いちばん上の段まで届いています。'
@@ -820,11 +820,12 @@ function renderLegends(){
 
 function renderDataRank(){
   const d = S.data;
-  titleEl.textContent = 'データランク'; backEl.hidden = false;
+  titleEl.textContent = 'キャラ熟練度'; backEl.hidden = false;
   return '<div class="card" style="margin-top:4px">' +
-      '<div class="dela" style="font-size:14px">この数字、どれくらい信じていい？</div>' +
-      '<div class="sub" style="margin-top:9px">試合数が少ないうちは、平均値はたまたまで動きます。' +
-      'どこまで積んだら信じていいかを4段で出します。<br>スプリットでは区切らず、全期間で積み上げます。</div></div>' +
+      '<div class="dela" style="font-size:14px">キャラ熟練度</div>' +
+      '<div class="sub" style="margin-top:9px">そのキャラを<b>何戦使ったか</b>を、帯で4段に分けています。' +
+      '<br>使い込むほど平均値が落ち着いて、そのキャラでの自分らしさが見えてきます。' +
+      '<br>スプリットでは区切らず、全期間で積み上げます。</div></div>' +
     (d.legends || []).map(l => legendCard(l, true)).join('') +
     '<div class="card" style="margin-top:12px"><div class="sub">' +
       '4つの数字はボタンです。タップすると、その段の意味と根拠が開きます。<br>' +
