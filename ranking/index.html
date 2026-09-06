@@ -690,7 +690,29 @@ function renderSeg(){
     '<button data-v="compo" class="' + (S.view === 'compo' ? 'on' : '') + '">' + ic(C, S.view === 'compo') + '構成</button>' +
   '</div>';
   segEl.querySelectorAll('button').forEach(b => {
-    b.onclick = () => { S.view = b.dataset.v; S.compoDetail = null; render(); window.scrollTo({ top: 0 }); };
+    b.onclick = () => {
+      const 前 = S.view;
+      S.view = b.dataset.v;
+      S.compoDetail = null;
+
+      /*
+        ★ 2026-09-06 — **構成に入るときは、既定をスプリットにする**（依頼者の指定）。
+
+          個人のランキングは「今月」で見たいが、構成は**3体そろって5戦**が要る。
+          1か月では1組しかそろわず、「オルターやランパートが出ない」と見えた。
+          スプリット単位なら試合数がたまるので、意味のある比較になる。
+
+        ★ 入るときの1回だけ。**構成の中で期間を変えたら、その選択を尊重する。**
+          毎回もどすと「8月の構成が見たい」ができなくなる
+      */
+      if(S.view === 'compo' && 前 !== 'compo' && S.periodKind !== 'split'){
+        S.periodKind = 'split'; S.periodValue = '';
+        window.scrollTo({ top: 0 });
+        load();                       // 期間が変わるので取り直す（load が描き直す）
+        return;
+      }
+      render(); window.scrollTo({ top: 0 });
+    };
   });
 }
 
