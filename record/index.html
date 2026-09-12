@@ -2419,7 +2419,28 @@ function ingestNow(btn){
   const before = btn.textContent;
   btn.disabled = true;
   btn.textContent = '送っています…';
-  apiPost({ action:'run_ingest_now' })
+  /*
+    ★ 2026-09-13 — **一時的な404で、いきなり赤い字を出していた。**
+
+      > 赤く「始められませんでした：HTTP 404」と表示されて取り込めません。
+
+      調べたらサーバーは正常だった（同じPOSTがHTTP 200で返る）。
+      **GASのWebアプリは、混んでいるときに404や5xxを返すことがある。**
+      読み取り側（apiGetOnce）は前からこれを「やり直す価値あり」と扱っていたのに、
+      **書き込み側だけ、1回で諦めて赤くしていた。**
+
+      → 1度だけ黙ってやり直す。それでも駄目なら、
+        「一時的なものかもしれません」と添える。
+  */
+  const 送る = () => apiPost({ action:'run_ingest_now' });
+  const 一時的か = m => /HTTP (404|429|5\d\d)/.test(String(m || ''));
+
+  送る()
+    .catch(err => {
+      if(!一時的か(err.message)) throw err;
+      // 1度だけ、少し待ってやり直す
+      return new Promise(r => setTimeout(r, 1500)).then(送る);
+    })
     .then(r => {
       if(!r.ok) throw new Error(r.error || '始められませんでした');
       btn.textContent = '取り込みを始めました';
@@ -2431,7 +2452,9 @@ function ingestNow(btn){
     })
     .catch(err => {
       btn.disabled = false; btn.textContent = before;
-      toast('始められませんでした：' + err.message, true);
+      toast('始められませんでした：' + err.message +
+        (一時的か(err.message) ? '（一時的なものかもしれません。少し待ってもう一度押してください）' : ''),
+        true, () => ingestNow(btn));
     });
 }
 
