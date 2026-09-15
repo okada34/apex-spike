@@ -1560,7 +1560,12 @@ function renderDetail(){
       </div>
     </div>
 
-    <div class="sec">3人分の成績</div>
+    <!-- 人数は固定で書かない。2人で出た試合は2人ぶんしか無い（2026-09-15）。
+         **スクショと見比べて読み落としに気づけるように、人数をここに出す** -->
+    <div class="sec">${entries.length}人分の成績</div>
+    ${entries.length > 0 && entries.length < 3
+      ? `<div class="sub" style="margin:-6px 18px 11px">${entries.length}人で出た試合です。いない${3 - entries.length}人ぶんは空けたまま確定できます。</div>`
+      : ''}
     <div id="entries"></div>
 
     <div class="textlink red" id="exclude" style="margin:6px 18px 0">この試合を集計から外す</div>
@@ -1766,7 +1771,8 @@ function renderDetail(){
  */
 // SPLIT_UNRESOLVED はここに入れない。**確定を止める**（Validation.gs の blocking）。
 // 設定＞スプリットの日程を入れるまで進めないので、これは報告ではなく作業
-var DONE_CODES = ['UNKNOWN_ACCOUNT', 'CAPTURED_AT_FALLBACK', 'LEGEND_UNRESOLVED'];
+// SQUAD_SHORT（2人・1人で出た試合）も報告。**いない人のぶんは直しようがない**（2026-09-15）
+var DONE_CODES = ['UNKNOWN_ACCOUNT', 'CAPTURED_AT_FALLBACK', 'LEGEND_UNRESOLVED', 'SQUAD_SHORT'];
 function isTodoCode(c){ return DONE_CODES.indexOf(String(c && c.code)) < 0; }
 
 /**
@@ -1823,6 +1829,7 @@ function codeTitle(code){
     LOW_CONFIDENCE: '読み取りに自信が無い項目がある',
     PERSPECTIVE_MISMATCH: '撮った人が特定できない',
     PLAYER_COUNT_ABNORMAL: '人数がおかしい',
+    SQUAD_SHORT: '3人未満で出た試合',
     UNKNOWN_ACCOUNT: '知らないアカウントがいる',
     SPLIT_UNRESOLVED: 'スプリットが特定できない',
     CAPTURED_AT_FALLBACK: '撮影時刻が推定'
@@ -2058,7 +2065,7 @@ function paintTrio(entries, accById, legById){
         }).join('') +
       '</div>' +
       '<button class="btn ghost" id="trioPick" style="margin-top:12px">' +
-        (need ? '3人分まとめて選ぶ' : '選び直す') + '</button>' +
+        (need ? list.length + '人分まとめて選ぶ' : '選び直す') + '</button>' +
     '</div>';
 
   const b = document.getElementById('trioPick');
@@ -2474,9 +2481,12 @@ function retryFailed(btn){
         if(r.blocked_until) c.quota_blocked_until = r.blocked_until;
         cacheSet('review_list', S.list);
       }
+      // 定期トリガーはもう無い。**サーバーが予約できたかどうかで言い分ける**（2026-09-15）
       toast(r.blocked_until
         ? r.requeued + '件を待ちに戻しました。ただし画像を読む枠が切れています（' + r.blocked_until + '休みます）'
-        : r.requeued + '件を待ちに戻しました。次の取り込み（15分おき）で読み直します');
+        : r.requeued + '件を待ちに戻しました。' + (r.scheduled === false
+            ? '「いま取り込む」を押すと読み直します'
+            : '数秒後に読み直します'));
       paintList();
     })
     .catch(err => {
