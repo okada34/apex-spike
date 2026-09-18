@@ -333,27 +333,21 @@ function cacheSet(key, data){
  * しかも数秒後には新しい数字が届いて、勝手に消える。
  * **利用者にできることが何も無い警告を、開くたびに見せていた。**
  *
- * つながっていないときの帯は残す。そちらは
- * 「なぜ数字が変わらないのか」の答えになっていて、消すと理由が分からなくなる。
+ * === 「つながっていません」もやめた（2026-09-18・依頼者の指定）===
+ *
+ *   > 画面上部の「つながっていません（最終更新9分前）」っていう表示も消してって
+ *   > 言わなかったっけ？萎えるんだよ
+ *
+ * 09-06 には「なぜ数字が変わらないのかの答えになる」と考えて、こちらは残していた。
+ * **判断を誤った。**Google の応答はときどき10〜35秒かかったり、404で落ちたりする
+ * （09-18 に実測）。そのたびに帯が出るが、**利用者にできることは、やはり何も無い。**
+ *
+ * → 帯は一切出さない。失敗しても手元の数字を出したまま、次に開いたときに取り直す。
+ *   前の版で出た帯が残っていれば消す。
  */
 function updateFreshBar(){
-  const age = SHOWN_KEY ? cacheAge(SHOWN_KEY) : null;
-  if(NET_OK){ removeFreshBar(); return; }
-
-  let el = document.getElementById('freshbar');
-  if(!el){
-    el = document.createElement('div');
-    el.id = 'freshbar';
-    el.style.cssText =
-      'position:fixed;left:0;right:0;top:0;z-index:60;padding:9px 14px;' +
-      'font-family:inherit;font-size:12.5px;line-height:1.5;text-align:center;' +
-      'background:#3A2A1A;color:#FFE646;border-bottom:1px solid #6B4E1E';
-    document.body.appendChild(el);
-  }
-  el.textContent = '⚠ つながっていません' +
-    '（最終更新 ' + fmtAgo(age) + '）';
-  // 帯のぶんだけ本文を下げる。上に重ねるとヘッダーが隠れて操作できなくなる
-  document.body.style.paddingTop = el.offsetHeight + 'px';
+  // 帯は出さない（上の説明）。前の版で出たものが残っていれば消す
+  removeFreshBar();
 }
 
 function removeFreshBar(){
